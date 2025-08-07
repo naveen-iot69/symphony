@@ -4,15 +4,14 @@
 // 	protoc        v6.31.1
 // source: EdgeAdapterService.proto
 
-package edge_adapter
+package southbound
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -23,16 +22,13 @@ const (
 )
 
 type EdgeAdapterGrpcRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	Name   string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Kind   string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	Labels map[string]string      `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Types that are valid to be assigned to DeviceInfo:
-	//
-	//	*EdgeAdapterGrpcRequest_DeviceId
-	//	*EdgeAdapterGrpcRequest_NodeSpec
-	DeviceInfo    isEdgeAdapterGrpcRequest_DeviceInfo `protobuf_oneof:"deviceInfo"`
-	AppSpec       *EdgeAppSpec                        `protobuf:"bytes,6,opt,name=appSpec,proto3" json:"appSpec,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Kind          string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	Labels        map[string]string      `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Node          *Node                  `protobuf:"bytes,4,opt,name=node,proto3" json:"node,omitempty"`
+	NodeSpec      *NodeSpec              `protobuf:"bytes,5,opt,name=nodeSpec,proto3" json:"nodeSpec,omitempty"`
+	AppSpec       *EdgeAppSpec           `protobuf:"bytes,6,opt,name=appSpec,proto3" json:"appSpec,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -88,27 +84,16 @@ func (x *EdgeAdapterGrpcRequest) GetLabels() map[string]string {
 	return nil
 }
 
-func (x *EdgeAdapterGrpcRequest) GetDeviceInfo() isEdgeAdapterGrpcRequest_DeviceInfo {
+func (x *EdgeAdapterGrpcRequest) GetNode() *Node {
 	if x != nil {
-		return x.DeviceInfo
+		return x.Node
 	}
 	return nil
 }
 
-func (x *EdgeAdapterGrpcRequest) GetDeviceId() string {
-	if x != nil {
-		if x, ok := x.DeviceInfo.(*EdgeAdapterGrpcRequest_DeviceId); ok {
-			return x.DeviceId
-		}
-	}
-	return ""
-}
-
 func (x *EdgeAdapterGrpcRequest) GetNodeSpec() *NodeSpec {
 	if x != nil {
-		if x, ok := x.DeviceInfo.(*EdgeAdapterGrpcRequest_NodeSpec); ok {
-			return x.NodeSpec
-		}
+		return x.NodeSpec
 	}
 	return nil
 }
@@ -119,22 +104,6 @@ func (x *EdgeAdapterGrpcRequest) GetAppSpec() *EdgeAppSpec {
 	}
 	return nil
 }
-
-type isEdgeAdapterGrpcRequest_DeviceInfo interface {
-	isEdgeAdapterGrpcRequest_DeviceInfo()
-}
-
-type EdgeAdapterGrpcRequest_DeviceId struct {
-	DeviceId string `protobuf:"bytes,4,opt,name=deviceId,proto3,oneof"`
-}
-
-type EdgeAdapterGrpcRequest_NodeSpec struct {
-	NodeSpec *NodeSpec `protobuf:"bytes,5,opt,name=nodeSpec,proto3,oneof"`
-}
-
-func (*EdgeAdapterGrpcRequest_DeviceId) isEdgeAdapterGrpcRequest_DeviceInfo() {}
-
-func (*EdgeAdapterGrpcRequest_NodeSpec) isEdgeAdapterGrpcRequest_DeviceInfo() {}
 
 type EdgeAppSpec struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -588,42 +557,92 @@ func (x *EdgeAdapterGrpcResponse) GetMessage() string {
 	return ""
 }
 
+type Node struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=deviceId,proto3" json:"deviceId,omitempty"`
+	OwnerId       string                 `protobuf:"bytes,2,opt,name=ownerId,proto3" json:"ownerId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Node) Reset() {
+	*x = Node{}
+	mi := &file_EdgeAdapterService_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Node) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Node) ProtoMessage() {}
+
+func (x *Node) ProtoReflect() protoreflect.Message {
+	mi := &file_EdgeAdapterService_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Node.ProtoReflect.Descriptor instead.
+func (*Node) Descriptor() ([]byte, []int) {
+	return file_EdgeAdapterService_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Node) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *Node) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
 var File_EdgeAdapterService_proto protoreflect.FileDescriptor
 
 const file_EdgeAdapterService_proto_rawDesc = "" +
 	"\n" +
-	"\x18EdgeAdapterService.proto\x12#SE.IA.SysManagement.EdgeAdapterGrpc\"\xa1\x03\n" +
+	"\x18EdgeAdapterService.proto\x12\vEdgeAdapter\"\xd2\x02\n" +
 	"\x16EdgeAdapterGrpcRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind\x12_\n" +
-	"\x06labels\x18\x03 \x03(\v2G.SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest.LabelsEntryR\x06labels\x12\x1c\n" +
-	"\bdeviceId\x18\x04 \x01(\tH\x00R\bdeviceId\x12K\n" +
-	"\bnodeSpec\x18\x05 \x01(\v2-.SE.IA.SysManagement.EdgeAdapterGrpc.NodeSpecH\x00R\bnodeSpec\x12J\n" +
-	"\aappSpec\x18\x06 \x01(\v20.SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAppSpecR\aappSpec\x1a9\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12G\n" +
+	"\x06labels\x18\x03 \x03(\v2/.EdgeAdapter.EdgeAdapterGrpcRequest.LabelsEntryR\x06labels\x12%\n" +
+	"\x04node\x18\x04 \x01(\v2\x11.EdgeAdapter.NodeR\x04node\x121\n" +
+	"\bnodeSpec\x18\x05 \x01(\v2\x15.EdgeAdapter.NodeSpecR\bnodeSpec\x122\n" +
+	"\aappSpec\x18\x06 \x01(\v2\x18.EdgeAdapter.EdgeAppSpecR\aappSpec\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\f\n" +
-	"\n" +
-	"deviceInfo\"\xd7\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa7\x01\n" +
 	"\vEdgeAppSpec\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05image\x18\x02 \x01(\tR\x05image\x12Q\n" +
-	"\bnetworks\x18\x03 \x03(\v25.SE.IA.SysManagement.EdgeAdapterGrpc.ContainerNetworkR\bnetworks\x12K\n" +
-	"\tresources\x18\x04 \x01(\v2-.SE.IA.SysManagement.EdgeAdapterGrpc.ResourceR\tresources\"Y\n" +
+	"\x05image\x18\x02 \x01(\tR\x05image\x129\n" +
+	"\bnetworks\x18\x03 \x03(\v2\x1d.EdgeAdapter.ContainerNetworkR\bnetworks\x123\n" +
+	"\tresources\x18\x04 \x01(\v2\x15.EdgeAdapter.ResourceR\tresources\"Y\n" +
 	"\x10ContainerNetwork\x12\x12\n" +
 	"\x04ipv6\x18\x01 \x01(\tR\x04ipv6\x12\x12\n" +
 	"\x04ipv4\x18\x02 \x01(\tR\x04ipv4\x12\x1d\n" +
 	"\n" +
-	"network_id\x18\x03 \x01(\tR\tnetworkId\"\x98\x01\n" +
-	"\bResource\x12Q\n" +
-	"\x06limits\x18\x05 \x03(\v29.SE.IA.SysManagement.EdgeAdapterGrpc.Resource.LimitsEntryR\x06limits\x1a9\n" +
+	"network_id\x18\x03 \x01(\tR\tnetworkId\"\x80\x01\n" +
+	"\bResource\x129\n" +
+	"\x06limits\x18\x05 \x03(\v2!.EdgeAdapter.Resource.LimitsEntryR\x06limits\x1a9\n" +
 	"\vLimitsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd8\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa8\x01\n" +
 	"\bNodeSpec\x12\x1c\n" +
-	"\taddresses\x18\x01 \x03(\tR\taddresses\x12L\n" +
-	"\bnetworks\x18\x02 \x03(\v20.SE.IA.SysManagement.EdgeAdapterGrpc.HostNetworkR\bnetworks\x12`\n" +
-	"\x11containerNetworks\x18\x03 \x03(\v22.SE.IA.SysManagement.EdgeAdapterGrpc.DockerNetworkR\x11containerNetworks\"\xb1\x01\n" +
+	"\taddresses\x18\x01 \x03(\tR\taddresses\x124\n" +
+	"\bnetworks\x18\x02 \x03(\v2\x18.EdgeAdapter.HostNetworkR\bnetworks\x12H\n" +
+	"\x11containerNetworks\x18\x03 \x03(\v2\x1a.EdgeAdapter.DockerNetworkR\x11containerNetworks\"\xb1\x01\n" +
 	"\vHostNetwork\x12\x18\n" +
 	"\anetName\x18\x01 \x01(\tR\anetName\x12\x18\n" +
 	"\anicName\x18\x02 \x01(\tR\anicName\x12&\n" +
@@ -640,10 +659,13 @@ const file_EdgeAdapterService_proto_rawDesc = "" +
 	"\x17EdgeAdapterGrpcResponse\x12\x1a\n" +
 	"\bHttpCode\x18\x01 \x01(\x05R\bHttpCode\x12\x1c\n" +
 	"\tErrorCode\x18\x02 \x01(\x05R\tErrorCode\x12\x18\n" +
-	"\aMessage\x18\x03 \x01(\tR\aMessage2\xa7\x02\n" +
-	"\x0fEdgeAdapterGrpc\x12\x88\x01\n" +
-	"\vDeployAsync\x12;.SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest\x1a<.SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcResponse\x12\x88\x01\n" +
-	"\vDeleteAsync\x12;.SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest\x1a<.SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcResponseBcZagithub.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/edge_adapterb\x06proto3"
+	"\aMessage\x18\x03 \x01(\tR\aMessage\"<\n" +
+	"\x04Node\x12\x1a\n" +
+	"\bdeviceId\x18\x01 \x01(\tR\bdeviceId\x12\x18\n" +
+	"\aownerId\x18\x02 \x01(\tR\aownerId2\xc8\x01\n" +
+	"\x12EdgeAdapterService\x12X\n" +
+	"\vDeployAsync\x12#.EdgeAdapter.EdgeAdapterGrpcRequest\x1a$.EdgeAdapter.EdgeAdapterGrpcResponse\x12X\n" +
+	"\vDeleteAsync\x12#.EdgeAdapter.EdgeAdapterGrpcRequest\x1a$.EdgeAdapter.EdgeAdapterGrpcResponseB\x87\x01Z\x84\x01github.com/intel-collab/frameworks.edge.orchestration.gold-creek.placement-engine/system-model-watcher/pkg/api/southbound;southboundb\x06proto3"
 
 var (
 	file_EdgeAdapterService_proto_rawDescOnce sync.Once
@@ -657,37 +679,39 @@ func file_EdgeAdapterService_proto_rawDescGZIP() []byte {
 	return file_EdgeAdapterService_proto_rawDescData
 }
 
-var file_EdgeAdapterService_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_EdgeAdapterService_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_EdgeAdapterService_proto_goTypes = []any{
-	(*EdgeAdapterGrpcRequest)(nil),  // 0: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest
-	(*EdgeAppSpec)(nil),             // 1: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAppSpec
-	(*ContainerNetwork)(nil),        // 2: SE.IA.SysManagement.EdgeAdapterGrpc.ContainerNetwork
-	(*Resource)(nil),                // 3: SE.IA.SysManagement.EdgeAdapterGrpc.Resource
-	(*NodeSpec)(nil),                // 4: SE.IA.SysManagement.EdgeAdapterGrpc.NodeSpec
-	(*HostNetwork)(nil),             // 5: SE.IA.SysManagement.EdgeAdapterGrpc.HostNetwork
-	(*DockerNetwork)(nil),           // 6: SE.IA.SysManagement.EdgeAdapterGrpc.DockerNetwork
-	(*EdgeAdapterGrpcResponse)(nil), // 7: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcResponse
-	nil,                             // 8: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest.LabelsEntry
-	nil,                             // 9: SE.IA.SysManagement.EdgeAdapterGrpc.Resource.LimitsEntry
+	(*EdgeAdapterGrpcRequest)(nil),  // 0: EdgeAdapter.EdgeAdapterGrpcRequest
+	(*EdgeAppSpec)(nil),             // 1: EdgeAdapter.EdgeAppSpec
+	(*ContainerNetwork)(nil),        // 2: EdgeAdapter.ContainerNetwork
+	(*Resource)(nil),                // 3: EdgeAdapter.Resource
+	(*NodeSpec)(nil),                // 4: EdgeAdapter.NodeSpec
+	(*HostNetwork)(nil),             // 5: EdgeAdapter.HostNetwork
+	(*DockerNetwork)(nil),           // 6: EdgeAdapter.DockerNetwork
+	(*EdgeAdapterGrpcResponse)(nil), // 7: EdgeAdapter.EdgeAdapterGrpcResponse
+	(*Node)(nil),                    // 8: EdgeAdapter.Node
+	nil,                             // 9: EdgeAdapter.EdgeAdapterGrpcRequest.LabelsEntry
+	nil,                             // 10: EdgeAdapter.Resource.LimitsEntry
 }
 var file_EdgeAdapterService_proto_depIdxs = []int32{
-	8,  // 0: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest.labels:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest.LabelsEntry
-	4,  // 1: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest.nodeSpec:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.NodeSpec
-	1,  // 2: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest.appSpec:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAppSpec
-	2,  // 3: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAppSpec.networks:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.ContainerNetwork
-	3,  // 4: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAppSpec.resources:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.Resource
-	9,  // 5: SE.IA.SysManagement.EdgeAdapterGrpc.Resource.limits:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.Resource.LimitsEntry
-	5,  // 6: SE.IA.SysManagement.EdgeAdapterGrpc.NodeSpec.networks:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.HostNetwork
-	6,  // 7: SE.IA.SysManagement.EdgeAdapterGrpc.NodeSpec.containerNetworks:type_name -> SE.IA.SysManagement.EdgeAdapterGrpc.DockerNetwork
-	0,  // 8: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc.DeployAsync:input_type -> SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest
-	0,  // 9: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc.DeleteAsync:input_type -> SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcRequest
-	7,  // 10: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc.DeployAsync:output_type -> SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcResponse
-	7,  // 11: SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc.DeleteAsync:output_type -> SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpcResponse
-	10, // [10:12] is the sub-list for method output_type
-	8,  // [8:10] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	9,  // 0: EdgeAdapter.EdgeAdapterGrpcRequest.labels:type_name -> EdgeAdapter.EdgeAdapterGrpcRequest.LabelsEntry
+	8,  // 1: EdgeAdapter.EdgeAdapterGrpcRequest.node:type_name -> EdgeAdapter.Node
+	4,  // 2: EdgeAdapter.EdgeAdapterGrpcRequest.nodeSpec:type_name -> EdgeAdapter.NodeSpec
+	1,  // 3: EdgeAdapter.EdgeAdapterGrpcRequest.appSpec:type_name -> EdgeAdapter.EdgeAppSpec
+	2,  // 4: EdgeAdapter.EdgeAppSpec.networks:type_name -> EdgeAdapter.ContainerNetwork
+	3,  // 5: EdgeAdapter.EdgeAppSpec.resources:type_name -> EdgeAdapter.Resource
+	10, // 6: EdgeAdapter.Resource.limits:type_name -> EdgeAdapter.Resource.LimitsEntry
+	5,  // 7: EdgeAdapter.NodeSpec.networks:type_name -> EdgeAdapter.HostNetwork
+	6,  // 8: EdgeAdapter.NodeSpec.containerNetworks:type_name -> EdgeAdapter.DockerNetwork
+	0,  // 9: EdgeAdapter.EdgeAdapterService.DeployAsync:input_type -> EdgeAdapter.EdgeAdapterGrpcRequest
+	0,  // 10: EdgeAdapter.EdgeAdapterService.DeleteAsync:input_type -> EdgeAdapter.EdgeAdapterGrpcRequest
+	7,  // 11: EdgeAdapter.EdgeAdapterService.DeployAsync:output_type -> EdgeAdapter.EdgeAdapterGrpcResponse
+	7,  // 12: EdgeAdapter.EdgeAdapterService.DeleteAsync:output_type -> EdgeAdapter.EdgeAdapterGrpcResponse
+	11, // [11:13] is the sub-list for method output_type
+	9,  // [9:11] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_EdgeAdapterService_proto_init() }
@@ -695,17 +719,13 @@ func file_EdgeAdapterService_proto_init() {
 	if File_EdgeAdapterService_proto != nil {
 		return
 	}
-	file_EdgeAdapterService_proto_msgTypes[0].OneofWrappers = []any{
-		(*EdgeAdapterGrpcRequest_DeviceId)(nil),
-		(*EdgeAdapterGrpcRequest_NodeSpec)(nil),
-	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_EdgeAdapterService_proto_rawDesc), len(file_EdgeAdapterService_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

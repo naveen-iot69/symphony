@@ -4,11 +4,10 @@
 // - protoc             v6.31.1
 // source: EdgeAdapterService.proto
 
-package edge_adapter
+package southbound
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,139 +19,139 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	EdgeAdapterGrpc_DeployAsync_FullMethodName = "/SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc/DeployAsync"
-	EdgeAdapterGrpc_DeleteAsync_FullMethodName = "/SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc/DeleteAsync"
+	EdgeAdapterService_DeployAsync_FullMethodName = "/EdgeAdapter.EdgeAdapterService/DeployAsync"
+	EdgeAdapterService_DeleteAsync_FullMethodName = "/EdgeAdapter.EdgeAdapterService/DeleteAsync"
 )
 
-// EdgeAdapterGrpcClient is the client API for EdgeAdapterGrpc service.
+// EdgeAdapterServiceClient is the client API for EdgeAdapterService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type EdgeAdapterGrpcClient interface {
+type EdgeAdapterServiceClient interface {
 	DeployAsync(ctx context.Context, in *EdgeAdapterGrpcRequest, opts ...grpc.CallOption) (*EdgeAdapterGrpcResponse, error)
 	DeleteAsync(ctx context.Context, in *EdgeAdapterGrpcRequest, opts ...grpc.CallOption) (*EdgeAdapterGrpcResponse, error)
 }
 
-type edgeAdapterGrpcClient struct {
+type edgeAdapterServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewEdgeAdapterGrpcClient(cc grpc.ClientConnInterface) EdgeAdapterGrpcClient {
-	return &edgeAdapterGrpcClient{cc}
+func NewEdgeAdapterServiceClient(cc grpc.ClientConnInterface) EdgeAdapterServiceClient {
+	return &edgeAdapterServiceClient{cc}
 }
 
-func (c *edgeAdapterGrpcClient) DeployAsync(ctx context.Context, in *EdgeAdapterGrpcRequest, opts ...grpc.CallOption) (*EdgeAdapterGrpcResponse, error) {
+func (c *edgeAdapterServiceClient) DeployAsync(ctx context.Context, in *EdgeAdapterGrpcRequest, opts ...grpc.CallOption) (*EdgeAdapterGrpcResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EdgeAdapterGrpcResponse)
-	err := c.cc.Invoke(ctx, EdgeAdapterGrpc_DeployAsync_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, EdgeAdapterService_DeployAsync_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *edgeAdapterGrpcClient) DeleteAsync(ctx context.Context, in *EdgeAdapterGrpcRequest, opts ...grpc.CallOption) (*EdgeAdapterGrpcResponse, error) {
+func (c *edgeAdapterServiceClient) DeleteAsync(ctx context.Context, in *EdgeAdapterGrpcRequest, opts ...grpc.CallOption) (*EdgeAdapterGrpcResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EdgeAdapterGrpcResponse)
-	err := c.cc.Invoke(ctx, EdgeAdapterGrpc_DeleteAsync_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, EdgeAdapterService_DeleteAsync_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// EdgeAdapterGrpcServer is the server API for EdgeAdapterGrpc service.
-// All implementations must embed UnimplementedEdgeAdapterGrpcServer
+// EdgeAdapterServiceServer is the server API for EdgeAdapterService service.
+// All implementations must embed UnimplementedEdgeAdapterServiceServer
 // for forward compatibility.
-type EdgeAdapterGrpcServer interface {
+type EdgeAdapterServiceServer interface {
 	DeployAsync(context.Context, *EdgeAdapterGrpcRequest) (*EdgeAdapterGrpcResponse, error)
 	DeleteAsync(context.Context, *EdgeAdapterGrpcRequest) (*EdgeAdapterGrpcResponse, error)
-	mustEmbedUnimplementedEdgeAdapterGrpcServer()
+	mustEmbedUnimplementedEdgeAdapterServiceServer()
 }
 
-// UnimplementedEdgeAdapterGrpcServer must be embedded to have
+// UnimplementedEdgeAdapterServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedEdgeAdapterGrpcServer struct{}
+type UnimplementedEdgeAdapterServiceServer struct{}
 
-func (UnimplementedEdgeAdapterGrpcServer) DeployAsync(context.Context, *EdgeAdapterGrpcRequest) (*EdgeAdapterGrpcResponse, error) {
+func (UnimplementedEdgeAdapterServiceServer) DeployAsync(context.Context, *EdgeAdapterGrpcRequest) (*EdgeAdapterGrpcResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeployAsync not implemented")
 }
-func (UnimplementedEdgeAdapterGrpcServer) DeleteAsync(context.Context, *EdgeAdapterGrpcRequest) (*EdgeAdapterGrpcResponse, error) {
+func (UnimplementedEdgeAdapterServiceServer) DeleteAsync(context.Context, *EdgeAdapterGrpcRequest) (*EdgeAdapterGrpcResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAsync not implemented")
 }
-func (UnimplementedEdgeAdapterGrpcServer) mustEmbedUnimplementedEdgeAdapterGrpcServer() {}
-func (UnimplementedEdgeAdapterGrpcServer) testEmbeddedByValue()                         {}
+func (UnimplementedEdgeAdapterServiceServer) mustEmbedUnimplementedEdgeAdapterServiceServer() {}
+func (UnimplementedEdgeAdapterServiceServer) testEmbeddedByValue()                            {}
 
-// UnsafeEdgeAdapterGrpcServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to EdgeAdapterGrpcServer will
+// UnsafeEdgeAdapterServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to EdgeAdapterServiceServer will
 // result in compilation errors.
-type UnsafeEdgeAdapterGrpcServer interface {
-	mustEmbedUnimplementedEdgeAdapterGrpcServer()
+type UnsafeEdgeAdapterServiceServer interface {
+	mustEmbedUnimplementedEdgeAdapterServiceServer()
 }
 
-func RegisterEdgeAdapterGrpcServer(s grpc.ServiceRegistrar, srv EdgeAdapterGrpcServer) {
-	// If the following call pancis, it indicates UnimplementedEdgeAdapterGrpcServer was
+func RegisterEdgeAdapterServiceServer(s grpc.ServiceRegistrar, srv EdgeAdapterServiceServer) {
+	// If the following call pancis, it indicates UnimplementedEdgeAdapterServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&EdgeAdapterGrpc_ServiceDesc, srv)
+	s.RegisterService(&EdgeAdapterService_ServiceDesc, srv)
 }
 
-func _EdgeAdapterGrpc_DeployAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EdgeAdapterService_DeployAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EdgeAdapterGrpcRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EdgeAdapterGrpcServer).DeployAsync(ctx, in)
+		return srv.(EdgeAdapterServiceServer).DeployAsync(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: EdgeAdapterGrpc_DeployAsync_FullMethodName,
+		FullMethod: EdgeAdapterService_DeployAsync_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EdgeAdapterGrpcServer).DeployAsync(ctx, req.(*EdgeAdapterGrpcRequest))
+		return srv.(EdgeAdapterServiceServer).DeployAsync(ctx, req.(*EdgeAdapterGrpcRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EdgeAdapterGrpc_DeleteAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EdgeAdapterService_DeleteAsync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EdgeAdapterGrpcRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EdgeAdapterGrpcServer).DeleteAsync(ctx, in)
+		return srv.(EdgeAdapterServiceServer).DeleteAsync(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: EdgeAdapterGrpc_DeleteAsync_FullMethodName,
+		FullMethod: EdgeAdapterService_DeleteAsync_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EdgeAdapterGrpcServer).DeleteAsync(ctx, req.(*EdgeAdapterGrpcRequest))
+		return srv.(EdgeAdapterServiceServer).DeleteAsync(ctx, req.(*EdgeAdapterGrpcRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// EdgeAdapterGrpc_ServiceDesc is the grpc.ServiceDesc for EdgeAdapterGrpc service.
+// EdgeAdapterService_ServiceDesc is the grpc.ServiceDesc for EdgeAdapterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var EdgeAdapterGrpc_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "SE.IA.SysManagement.EdgeAdapterGrpc.EdgeAdapterGrpc",
-	HandlerType: (*EdgeAdapterGrpcServer)(nil),
+var EdgeAdapterService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "EdgeAdapter.EdgeAdapterService",
+	HandlerType: (*EdgeAdapterServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "DeployAsync",
-			Handler:    _EdgeAdapterGrpc_DeployAsync_Handler,
+			Handler:    _EdgeAdapterService_DeployAsync_Handler,
 		},
 		{
 			MethodName: "DeleteAsync",
-			Handler:    _EdgeAdapterGrpc_DeleteAsync_Handler,
+			Handler:    _EdgeAdapterService_DeleteAsync_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
