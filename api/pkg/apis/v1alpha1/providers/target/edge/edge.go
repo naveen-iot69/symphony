@@ -10,7 +10,7 @@ import (
 
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/contexts"
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/model"
-	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/edge_adapter"
+	southbound "github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/edge_adapter"
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/system_model"
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/authprovider"
 	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2"
@@ -40,7 +40,7 @@ type EdgeProvider struct {
 
 	AuthService       *authprovider.AuthenticationService
 	SystemClient      system_model.SystemModelClient
-	EdgeAdapterClient edge_adapter.EdgeAdapterGrpcClient
+	EdgeAdapterClient southbound.EdgeAdapterServiceClient
 }
 
 func EdgeProviderConfigFromMap(properties map[string]string) (EdgeProviderConfig, error) {
@@ -302,11 +302,11 @@ func (h *EdgeProvider) deployEdgeComponent(ctx context.Context, component model.
 		return model.ComponentResultSpec{}, fmt.Errorf("app.version is required")
 	}
 
-	request := &edge_adapter.EdgeAdapterGrpcRequest{
+	request := &southbound.EdgeAdapterGrpcRequest{
 		Name:   component.Name,
 		Kind:   component.Type,
 		Labels: make(map[string]string),
-		AppSpec: &edge_adapter.EdgeAppSpec{
+		AppSpec: &southbound.EdgeAppSpec{
 			Name:  fmt.Sprintf("%s", appID),
 			Image: fmt.Sprintf("%s:%s", appID, appVersion),
 		},
@@ -316,19 +316,17 @@ func (h *EdgeProvider) deployEdgeComponent(ctx context.Context, component model.
 		request.Labels[key] = fmt.Sprintf("%v", value)
 	}
 	if deviceID, exists := component.Properties["device.id"]; exists {
-		request.DeviceInfo = &edge_adapter.EdgeAdapterGrpcRequest_DeviceId{
+		request.Node = &southbound.Node{
 			DeviceId: fmt.Sprintf("%v", deviceID),
 		}
 	} else {
-		request.DeviceInfo = &edge_adapter.EdgeAdapterGrpcRequest_NodeSpec{
-			NodeSpec: &edge_adapter.NodeSpec{
-				Addresses: []string{"default"},
-			},
+		request.NodeSpec = &southbound.NodeSpec{
+			Addresses: []string{"default"},
 		}
 	}
 
 	if request.AppSpec.Resources == nil {
-		request.AppSpec.Resources = &edge_adapter.Resource{
+		request.AppSpec.Resources = &southbound.Resource{
 			Limits: make(map[string]string),
 		}
 	}
