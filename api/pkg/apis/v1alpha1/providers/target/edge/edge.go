@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/contexts"
@@ -136,11 +137,9 @@ func (h *EdgeProvider) Get(ctx context.Context, deployment model.DeploymentSpec,
 
 	sLog.InfoCtx(ctx, "  P (Edge Target): getting artifacts: %s - %s", deployment.Instance.Spec.Scope, deployment.Instance.ObjectMeta.Name)
 
-	// ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
 	requestCtx, cancelFunc := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancelFunc()
 
-	// Session ID is taken every time Get() function is called
 	requestCtxNew, err := h.establishConnection(requestCtx)
 	if err != nil {
 		sLog.ErrorCtx(ctx, "Failed to establish connection", "error", err)
@@ -181,9 +180,6 @@ func appToComponentSpec(app *system_model.AppInstance) model.ComponentSpec {
 		Name:     app.Metadata.Name,
 		Type:     app.Kind,
 		Metadata: metadata,
-		// Properties: map[string]interface{}{
-		// 	"container": device.Spec..(*system_model.AppInstanceSpec_Container).Container,
-		// },
 	}
 	return compSpec
 }
@@ -239,29 +235,24 @@ func (h *EdgeProvider) GetValidationRule(ctx context.Context) model.ValidationRu
 	}
 }
 
-func (h *EdgeProvider) Apply(ctx context.Context, deployment model.DeploymentSpec, step model.DeploymentStep, isDryRun bool) (map[string]model.ComponentResultSpec, error) {
+func (h *EdgeProvider) Apply(ctx context.Context, reference model.TargetProviderApplyReference) (map[string]model.ComponentResultSpec, error) {
 	ctx, span := observability.StartSpan("Edge Target Provider", ctx, &map[string]string{
 		"method": "Apply",
 	})
+
 	var err error = nil
 	defer observ_utils.CloseSpanWithError(span, &err)
 	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
 
-	sLog.InfoCtx(ctx, "  P (Edge Target): Apply()")
-
-	validationRule := h.GetValidationRule(ctx)
-	components := make([]model.ComponentSpec, len(step.Components))
-	for i, componentStep := range step.Components {
-		components[i] = componentStep.Component
-	}
-	if validationErr := validationRule.Validate(components); validationErr != nil {
-		sLog.ErrorCtx(ctx, "Component validation failed", "error", validationErr)
-		return nil, validationErr
+	// err = h.GetValidationRule(ctx).Validate(reference.Step.GetComponents())
+	if err != nil {
+		sLog.ErrorfCtx(ctx, "  P (Edge Target): failed to validate components: %+v", err)
+		return nil, err
 	}
 
-	if isDryRun {
-		sLog.InfoCtx(ctx, "Dry run mode - skipping actual deployment")
-		return make(map[string]model.ComponentResultSpec), nil
+	if reference.IsDryRun {
+		sLog.DebugCtx(ctx, "  P (Edge Target): dryRun is enabled, skipping apply")
+		return nil, nil
 	}
 
 	requestCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
@@ -269,75 +260,139 @@ func (h *EdgeProvider) Apply(ctx context.Context, deployment model.DeploymentSpe
 
 	requestCtxNew, err := h.establishEdgeConnection(requestCtx)
 	if err != nil {
-		sLog.ErrorCtx(ctx, "Failed to establish edge connection", "error", err)
+		sLog.ErrorfCtx(ctx, "  P (Edge Target): failed to establish edge connection: %+v", err)
 		return nil, err
 	}
 
-	results := make(map[string]model.ComponentResultSpec)
+	ret := reference.Step.PrepareResultMap()
 
-	for _, componentStep := range step.Components {
+	for _, componentStep := range reference.Step.Components {
 		if componentStep.Action == model.ComponentUpdate {
-			result, err := h.deployEdgeComponent(requestCtxNew, componentStep.Component)
+			result, err := h.deployEdgeComponent(requestCtxNew, componentStep.Component, reference.TargetName)
 			if err != nil {
-				sLog.ErrorCtx(ctx, "Failed to deploy component", "component", componentStep.Component.Name, "error", err)
-				results[componentStep.Component.Name] = model.ComponentResultSpec{
+				sLog.ErrorfCtx(ctx, "  P (Edge Target): failed to deploy component %s: %+v", componentStep.Component.Name, err)
+				ret[componentStep.Component.Name] = model.ComponentResultSpec{
 					Status:  v1alpha2.UpdateFailed,
 					Message: fmt.Sprintf("Failed to deploy component: %v", err),
 				}
 			} else {
-				results[componentStep.Component.Name] = result
+				ret[componentStep.Component.Name] = result
 			}
 		}
 	}
 
-	return results, nil
+	return ret, nil
 }
 
-func (h *EdgeProvider) deployEdgeComponent(ctx context.Context, component model.ComponentSpec) (model.ComponentResultSpec, error) {
-	appID, ok := component.Properties["app.id"]
+func (h *EdgeProvider) deployEdgeComponent(ctx context.Context, component model.ComponentSpec, deviceUUID string) (model.ComponentResultSpec, error) {
+	containerInfo, ok := component.Properties["container"]
 	if !ok {
-		return model.ComponentResultSpec{}, fmt.Errorf("app.id is required")
+		return model.ComponentResultSpec{}, fmt.Errorf("container information is required")
 	}
-	appVersion, ok := component.Properties["app.version"]
+	containerMap, ok := containerInfo.(map[string]interface{})
 	if !ok {
-		return model.ComponentResultSpec{}, fmt.Errorf("app.version is required")
+		return model.ComponentResultSpec{}, fmt.Errorf("invalid container information format")
+	}
+
+	containerImage, ok := containerMap["Image"].(string)
+	if !ok || containerImage == "" {
+		return model.ComponentResultSpec{}, fmt.Errorf("container image is required")
+	}
+
+	containerName, ok := containerMap["Name"].(string)
+	if !ok || containerName == "" {
+		containerName = component.Name
+	}
+
+	var containerNetworks []*southbound.ContainerNetwork
+	if networks, ok := containerMap["Networks"].([]interface{}); ok {
+		for _, network := range networks {
+			if netMap, ok := network.(map[string]interface{}); ok {
+				containerNetwork := &southbound.ContainerNetwork{
+					NetworkId: "",
+					Ipv4:      "",
+					Ipv6:      "",
+				}
+				if networkId, ok := netMap["NetworkId"].(string); ok {
+					containerNetwork.NetworkId = networkId
+				}
+				if ipv4, ok := netMap["Ipv4"].(string); ok {
+					containerNetwork.Ipv4 = ipv4
+				}
+				if ipv6, ok := netMap["Ipv6"].(string); ok {
+					containerNetwork.Ipv6 = ipv6
+				}
+				containerNetworks = append(containerNetworks, containerNetwork)
+			}
+		}
+	}
+
+	resourceLimits := make(map[string]string)
+	if resources, ok := containerMap["Resources"].(map[string]interface{}); ok {
+		if limits, ok := resources["Limits"].(map[string]interface{}); ok {
+			for key, value := range limits {
+				if strValue, ok := value.(string); ok {
+					resourceLimits[strings.ToLower(key)] = strValue
+				}
+			}
+		}
+	}
+
+	componentName := component.Name
+	if componentName == "" {
+		componentName = containerName
+	}
+	componentType := component.Type
+	if componentType == "" {
+		componentType = "container"
 	}
 
 	request := &southbound.EdgeAdapterGrpcRequest{
-		Name:   component.Name,
-		Kind:   component.Type,
+		Name:   componentName,
+		Kind:   componentType,
 		Labels: make(map[string]string),
 		AppSpec: &southbound.EdgeAppSpec{
-			Name:  fmt.Sprintf("%s", appID),
-			Image: fmt.Sprintf("%s:%s", appID, appVersion),
+			Name:     containerName,
+			Image:    containerImage,
+			Networks: containerNetworks,
+			Resources: &southbound.Resource{
+				Limits: resourceLimits,
+			},
 		},
 	}
 
-	for key, value := range component.Properties {
-		request.Labels[key] = fmt.Sprintf("%v", value)
-	}
-	if deviceID, exists := component.Properties["device.id"]; exists {
-		request.Node = &southbound.Node{
-			DeviceId: fmt.Sprintf("%v", deviceID),
-		}
-	} else {
-		request.NodeSpec = &southbound.NodeSpec{
-			Addresses: []string{"default"},
+	for key, value := range component.Metadata {
+		if strings.HasPrefix(key, "labels.") {
+			labelKey := strings.TrimPrefix(key, "labels.")
+			request.Labels[labelKey] = fmt.Sprintf("%v", value)
+		} else {
+			request.Labels[key] = fmt.Sprintf("%v", value)
 		}
 	}
 
-	if request.AppSpec.Resources == nil {
-		request.AppSpec.Resources = &southbound.Resource{
-			Limits: make(map[string]string),
-		}
+	deviceID := deviceUUID
+	ownerID := "default-owner"
+	if partnerOwner, exists := component.Metadata["labels.partnerOwnerId"]; exists {
+		ownerID = fmt.Sprintf("%v", partnerOwner)
 	}
 
-	if memory, exists := component.Properties["resources.memory"]; exists {
-		request.AppSpec.Resources.Limits["memory"] = fmt.Sprintf("%v", memory)
+	request.Node = &southbound.Node{
+		DeviceId: deviceID,
+		OwnerId:  ownerID,
 	}
-	if cpu, exists := component.Properties["resources.cpu"]; exists {
-		request.AppSpec.Resources.Limits["cpu"] = fmt.Sprintf("%v", cpu)
+
+	deviceSpec, err := h.getDeviceSpec(ctx, deviceID)
+	if err != nil {
+		return model.ComponentResultSpec{}, fmt.Errorf("failed to get device specification: %w", err)
 	}
+	request.NodeSpec = deviceSpec
+
+	if err := h.addReservedInterlinkIP(ctx, deviceID, request); err != nil {
+		sLog.WarnfCtx(ctx, "Failed to add reserved interlink IP: %v", err)
+	}
+
+	requestData, _ := json.MarshalIndent(request, "", "  ")
+	sLog.InfoCtx(ctx, "Deploying component to Edge device: %s\nRequest: %s", deviceID, string(requestData))
 
 	response, err := h.EdgeAdapterClient.DeployAsync(ctx, request)
 	if err != nil {
@@ -355,4 +410,72 @@ func (h *EdgeProvider) deployEdgeComponent(ctx context.Context, component model.
 		Status:  v1alpha2.Updated,
 		Message: "Component deployed successfully via EdgeAdapter",
 	}, nil
+}
+
+func (h *EdgeProvider) getDeviceSpec(ctx context.Context, deviceUUID string) (*southbound.NodeSpec, error) {
+	deviceIDValue := wrapperspb.String(deviceUUID)
+
+	device, err := h.SystemClient.GetDeviceById(ctx, deviceIDValue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device by ID %s: %w", deviceUUID, err)
+	}
+
+	if device == nil || device.Spec == nil {
+		return nil, fmt.Errorf("device spec is nil for device %s", deviceUUID)
+	}
+
+	nodeSpec := &southbound.NodeSpec{
+		Addresses:         device.Spec.Addresses,
+		Networks:          []*southbound.HostNetwork{},
+		ContainerNetworks: []*southbound.DockerNetwork{},
+	}
+
+	for _, network := range device.Spec.Networks {
+		hostNetwork := &southbound.HostNetwork{
+			NetName:        network.NetName,
+			NicName:        network.NicName,
+			RedundancyMode: network.RedundancyMode,
+			NicList:        network.NicList,
+			Ipv4:           network.Ipv4,
+			Gateway:        network.Gateway,
+		}
+		nodeSpec.Networks = append(nodeSpec.Networks, hostNetwork)
+	}
+
+	for _, containerNetwork := range device.Spec.ContainerNetworks {
+		dockerNetwork := &southbound.DockerNetwork{
+			NetworkId: containerNetwork.NetworkId,
+			Subnet:    containerNetwork.Subnet,
+			Gateway:   containerNetwork.Gateway,
+			NicName:   containerNetwork.NicName,
+			Type:      containerNetwork.Type,
+		}
+		nodeSpec.ContainerNetworks = append(nodeSpec.ContainerNetworks, dockerNetwork)
+	}
+
+	return nodeSpec, nil
+}
+
+func (h *EdgeProvider) addReservedInterlinkIP(ctx context.Context, deviceUUID string, request *southbound.EdgeAdapterGrpcRequest) error {
+	deviceIDValue := wrapperspb.String(deviceUUID)
+	device, err := h.SystemClient.GetDeviceById(ctx, deviceIDValue)
+	if err != nil {
+		return fmt.Errorf("failed to get device for reserved IP: %w", err)
+	}
+
+	if device == nil || device.Spec == nil {
+		return fmt.Errorf("device spec is nil for reserved IP extraction")
+	}
+
+	if device.Spec.ReservedAppInterlinkIp != "" {
+		reservedNetwork := &southbound.ContainerNetwork{
+			Ipv4:      device.Spec.ReservedAppInterlinkIp,
+			NetworkId: "softdpacInterlinkNet",
+			Ipv6:      "",
+		}
+		request.AppSpec.Networks = append(request.AppSpec.Networks, reservedNetwork)
+		sLog.InfoCtx(ctx, "Added reserved interlink IP to container networks", "ip", device.Spec.ReservedAppInterlinkIp, "networkId", "softdpacInterlinkNet")
+	}
+
+	return nil
 }
