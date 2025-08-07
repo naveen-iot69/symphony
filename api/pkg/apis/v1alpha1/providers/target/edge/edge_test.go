@@ -21,7 +21,7 @@ func TestGet(t *testing.T) {
 	err := provider.Init(config)
 	assert.Nil(t, err)
 	meta := model.ObjectMeta{
-		UID: "142292d7-dd0c-4a11-888e-3ad880ed4ce0",
+		UID: "d3971152-d47e-4956-8f7d-9b55a24a625c",
 	}
 
 	components, err := provider.Get(context.Background(), model.DeploymentSpec{
@@ -53,7 +53,7 @@ func TestGet(t *testing.T) {
 				},
 				Properties: map[string]interface{}{
 					model.ContainerImage: "redis:latest",
-					"env.REDIS_VERSION":  "7.0.12", // NOTE: Only environment variables passed in by the reference are returned.
+					"env.REDIS_VERSION":  "7.0.12",
 				},
 			},
 		},

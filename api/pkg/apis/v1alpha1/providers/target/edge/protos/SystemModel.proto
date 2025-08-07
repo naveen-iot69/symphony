@@ -1,0 +1,131 @@
+syntax = "proto3";
+package SystemModelProvider;
+
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "SE.IA.SysManagement.SystemModelProvider";
+option go_package = "github.com/intel-collab/frameworks.edge.orchestration.gold-creek.placement-engine/system-model-watcher/pkg/api/system_model;system_model";
+
+service SystemModel {
+  rpc ListDevices(ListDeviceRequest) returns (stream Device);
+  rpc ListAppInstances(ListAppRequest) returns (stream AppInstance);
+  rpc GetDesiredState(DesiredStateRequest) returns (DesiredStateResponse);
+  rpc GetAppInstanceById(google.protobuf.StringValue) returns (AppInstance);
+  rpc GetDeviceById(google.protobuf.StringValue) returns (Device);
+}
+
+message DesiredStateRequest {}
+message ListDeviceRequest {}
+message ListAppRequest {}
+
+message DesiredStateResponse {
+  repeated AppInstance apps = 1;
+  repeated Device devices = 2;
+}
+
+message AppInstanceStatus {
+  string status = 1;
+  string timeStamp = 2;
+  string runningHost = 3;
+  string interlinkStatus = 4;
+}
+
+enum AppInstanceStatusEnum {
+  Unknown = 0;
+  Single = 1;
+  Primary = 2;
+  Secondary = 3;
+  Paired = 4;
+  Unpaired = 5;
+}
+
+message DeviceStatus {
+  string status = 1;
+  string timeStamp = 2;
+  repeated string runningAppInstances = 3;
+  string interlinkStatus = 4;
+  string ntpStatus = 5;
+  bool authenticated = 6;
+}
+
+enum DeviceStatusEnum {
+  Unreachable = 0;
+  Reachable = 1;
+}
+
+message Metadata {
+  string name = 1;
+  string uuid = 2;
+  map<string, string> labels = 3;
+  string ownerId = 4;
+}
+message ContainerNetwork {
+  string ipv6 = 1;
+  string ipv4 = 2;
+  string network_id = 3;
+}
+message Limits {
+  string memory = 1;
+  string cpus = 2;
+}
+message Resources {
+  Limits limits = 1;
+}
+message Container {
+  string name = 1;
+  string image = 2;
+  repeated ContainerNetwork networks = 3;
+  Resources resources = 4;
+}
+message Affinity {
+  repeated string preferredHosts = 1;
+  repeated string appAntiAffinity = 2;
+}
+message AppInstanceSpec {
+  oneof data {
+    Container container = 1;
+    bytes blob = 2;
+  }
+  Affinity affinity = 3;
+}
+message AppInstance {
+  string version = 1;
+  string kind = 2;
+  Metadata metadata = 3;
+  AppInstanceSpec spec = 4;
+  AppInstanceStatus status = 5;
+  bool deleted = 6;
+}
+message DeviceContainerNetwork {
+  string networkId = 1;
+  string subnet = 2;
+  string gateway = 3;
+  string nicName = 4;
+  string type = 5;
+}
+message DeviceNetwork {
+  string netName = 1;
+  string nicName = 2;
+  string redundancyMode = 3;
+  repeated string nicList = 4;
+  string ipv4 = 5;
+  string gateway = 6;
+}
+
+message DeviceSpec {
+  repeated string addresses = 1;
+  repeated DeviceNetwork networks = 2;
+  repeated DeviceContainerNetwork containerNetworks = 3;
+  string reservedAppInterlinkIp = 4;
+}
+
+message TimeSetting {}
+
+message Device {
+  string kind = 1;
+  Metadata metadata = 2;
+  DeviceSpec spec = 3;
+  TimeSetting timeSetting = 4;
+  DeviceStatus status = 5;
+  bool deleted = 6;
+}

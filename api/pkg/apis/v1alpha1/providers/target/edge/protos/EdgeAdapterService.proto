@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package SE.IA.SysManagement.EdgeAdapterGrpc;
+
+option go_package = "github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/edge_adapter";
+
+service EdgeAdapterGrpc {
+	rpc DeployAsync (EdgeAdapterGrpcRequest) returns (EdgeAdapterGrpcResponse);
+	rpc DeleteAsync (EdgeAdapterGrpcRequest) returns (EdgeAdapterGrpcResponse);
+}
+
+message EdgeAdapterGrpcRequest{
+    string name = 1;
+    string kind = 2;
+    map<string, string> labels = 3;
+    oneof deviceInfo { // provide either deviceId or nodeSpec
+        string deviceId = 4;
+        NodeSpec nodeSpec = 5;
+    }
+    EdgeAppSpec appSpec = 6;
+}
+
+ 
+message EdgeAppSpec {
+    string name = 1;
+    string image = 2;
+    repeated ContainerNetwork networks = 3;
+    Resource resources = 4;
+}
+
+ 
+message ContainerNetwork {
+    string ipv6 = 1;
+    string ipv4 = 2;
+    string network_id = 3;
+}
+
+ 
+message Resource {    
+    map<string, string> limits = 5;
+}
+
+message NodeSpec {
+    repeated string addresses = 1;
+    repeated HostNetwork networks = 2;
+    repeated DockerNetwork containerNetworks = 3;
+}
+
+message HostNetwork {
+    string netName = 1;
+    string nicName = 2;
+    string redundancyMode = 3;
+    repeated string nicList = 4;
+    string ipv4 = 5;
+    string gateway = 6;
+}
+
+  message DockerNetwork {
+        string networkId = 1;
+        string subnet = 2;
+        string gateway = 3;
+        string nicName = 4;
+        string type = 5;
+    }
+
+message EdgeAdapterGrpcResponse{
+    int32 HttpCode = 1;
+    int32 ErrorCode = 2;
+    string Message = 3;
+}
