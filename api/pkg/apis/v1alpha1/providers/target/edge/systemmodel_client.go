@@ -38,10 +38,6 @@ func NewSystemModelClient(ctx context.Context, token string, tlsCredentials *tls
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.Header(&metadata.MD{"content-type": []string{"application/grpc"}})))
 	if token != "" {
 		conn, err := grpc.DialContext(ctx, addr, opts...,
-		//grpc.WithTransportCredentials(credentials.NewTLS(tlsCredentials)),
-		// grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))),
-		// grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))),
-		// grpc.WithPerRPCCredentials(tokenAuth{token: token, requireTransportSecurity: true}),
 		)
 		if err != nil {
 			return nil, err
@@ -49,10 +45,6 @@ func NewSystemModelClient(ctx context.Context, token string, tlsCredentials *tls
 		return system_model.NewSystemModelClient(conn), nil
 	} else {
 		conn, err := grpc.DialContext(ctx, addr, opts...,
-		// grpc.WithTransportCredentials(insecure.NewCredentials()),
-		// grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))),
-		// grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))),
-		// grpc.WithPerRPCCredentials(tokenAuth{token: "", requireTransportSecurity: false}),
 		)
 		if err != nil {
 			return nil, err

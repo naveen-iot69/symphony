@@ -27,7 +27,7 @@ const loggerName = "providers.target.edge"
 var sLog = logger.NewLogger(loggerName)
 
 var (
-	BaseAddress = "https://192.168.200.99:6201"
+	BaseAddress = "https://EAEP25:6201"
 )
 
 type EdgeProviderConfig struct {
@@ -158,7 +158,7 @@ func (h *EdgeProvider) Get(ctx context.Context, deployment model.DeploymentSpec,
 
 	if app == nil {
 		sLog.ErrorCtx(ctx, "app not found", "appName", deployment.Instance.ObjectMeta.Name)
-		return nil, fmt.Errorf("device %s not found", deployment.Instance.ObjectMeta.Name)
+		return nil, fmt.Errorf("app %s not found", deployment.Instance.ObjectMeta.Name)
 	}
 
 	compSpec := appToComponentSpec(app)
@@ -194,32 +194,32 @@ func (h *EdgeProvider) connectToEdgeAdapter(ctx context.Context, sessionId strin
 	return err
 }
 
-func (h *EdgeProvider) establishEdgeConnection(ctx context.Context) error {
+func (h *EdgeProvider) establishEdgeConnection(ctx context.Context) (context.Context, error) {
 	sessionID, _, err := h.AuthService.GetSessionIdAsync(BaseAddress)
 	if err != nil {
 		sLog.ErrorCtx(ctx, "Failed to get session ID", "error", err)
-		return err
+		return ctx, err
 	}
 
 	md := metadata.Pairs(
 		"cookie", fmt.Sprintf("sessionId=%s", sessionID),
 		"content-type", "application/grpc",
 	)
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	ctxNew := metadata.NewOutgoingContext(ctx, md)
 
-	if err := h.connectToAPI(ctx, sessionID, h.AuthService.Credentials, ""); err != nil {
+	if err := h.connectToAPI(ctxNew, sessionID, h.AuthService.Credentials, ""); err != nil {
 		sLog.ErrorCtx(ctx, "Failed to connect to API", "error", err)
-		return err
+		return ctxNew, err
 	}
 
 	os.Setenv("EDGE_ADAPTER_SERVICE_ADDRESS", BaseAddress)
 
-	if err := h.connectToEdgeAdapter(ctx, sessionID, h.AuthService.Credentials); err != nil {
+	if err := h.connectToEdgeAdapter(ctxNew, sessionID, h.AuthService.Credentials); err != nil {
 		sLog.ErrorCtx(ctx, "Failed to connect to EdgeAdapter service", "error", err)
-		return err
+		return ctxNew, err
 	}
 
-	return nil
+	return ctxNew, nil
 }
 
 func (h *EdgeProvider) GetValidationRule(ctx context.Context) model.ValidationRule {
@@ -264,10 +264,11 @@ func (h *EdgeProvider) Apply(ctx context.Context, deployment model.DeploymentSpe
 		return make(map[string]model.ComponentResultSpec), nil
 	}
 
-	ctx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	requestCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
 	defer cancelFunc()
 
-	if err := h.establishEdgeConnection(ctx); err != nil {
+	requestCtxNew, err := h.establishEdgeConnection(requestCtx)
+	if err != nil {
 		sLog.ErrorCtx(ctx, "Failed to establish edge connection", "error", err)
 		return nil, err
 	}
@@ -276,7 +277,7 @@ func (h *EdgeProvider) Apply(ctx context.Context, deployment model.DeploymentSpe
 
 	for _, componentStep := range step.Components {
 		if componentStep.Action == model.ComponentUpdate {
-			result, err := h.deployEdgeComponent(ctx, componentStep.Component)
+			result, err := h.deployEdgeComponent(requestCtxNew, componentStep.Component)
 			if err != nil {
 				sLog.ErrorCtx(ctx, "Failed to deploy component", "component", componentStep.Component.Name, "error", err)
 				results[componentStep.Component.Name] = model.ComponentResultSpec{

@@ -15,25 +15,14 @@ import (
 )
 
 func NewEdgeAdapterClient(ctx context.Context, token string, tlsCredentials *tls.Config) (edge_adapter.EdgeAdapterGrpcClient, error) {
-	addr := "192.168.200.99:6201"
-	if addr == "" {
-		addr = BaseAddress
-	}
-	
-	// Remove protocol prefix if present
-	if len(addr) > 8 && addr[:8] == "https://" {
-		addr = addr[8:]
-	} else if len(addr) > 7 && addr[:7] == "http://" {
-		addr = addr[7:]
-	}
+	addr := "eaep25:6201"
 
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(credentials.NewTLS(tlsCredentials)),
 	}
-	
-	// Add custom header to the gRPC request
+
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.Header(&metadata.MD{"content-type": []string{"application/grpc"}})))
-	
+
 	if token != "" {
 		conn, err := grpc.DialContext(ctx, addr, opts...)
 		if err != nil {
