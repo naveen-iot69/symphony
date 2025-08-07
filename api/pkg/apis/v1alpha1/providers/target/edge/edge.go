@@ -5,12 +5,15 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/contexts"
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/model"
+	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/edge_adapter"
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/system_model"
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/authprovider"
+	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2"
 	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2/observability"
 	observ_utils "github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2/observability/utils"
 	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2/providers"
@@ -24,7 +27,7 @@ const loggerName = "providers.target.edge"
 var sLog = logger.NewLogger(loggerName)
 
 var (
-	BaseAddress = "https://EAEP25:6201"
+	BaseAddress = "https://192.168.200.99:6201"
 )
 
 type EdgeProviderConfig struct {
@@ -35,8 +38,9 @@ type EdgeProvider struct {
 	Context *contexts.ManagerContext
 	Config  EdgeProviderConfig
 
-	AuthService  *authprovider.AuthenticationService
-	SystemClient system_model.SystemModelClient
+	AuthService       *authprovider.AuthenticationService
+	SystemClient      system_model.SystemModelClient
+	EdgeAdapterClient edge_adapter.EdgeAdapterGrpcClient
 }
 
 func EdgeProviderConfigFromMap(properties map[string]string) (EdgeProviderConfig, error) {
@@ -182,4 +186,174 @@ func appToComponentSpec(app *system_model.AppInstance) model.ComponentSpec {
 		},
 	}
 	return compSpec
+}
+
+func (h *EdgeProvider) connectToEdgeAdapter(ctx context.Context, sessionId string, credentials *tls.Config) error {
+	var err error
+	h.EdgeAdapterClient, err = NewEdgeAdapterClient(ctx, sessionId, credentials)
+	return err
+}
+
+func (h *EdgeProvider) establishEdgeConnection(ctx context.Context) error {
+	sessionID, _, err := h.AuthService.GetSessionIdAsync(BaseAddress)
+	if err != nil {
+		sLog.ErrorCtx(ctx, "Failed to get session ID", "error", err)
+		return err
+	}
+
+	md := metadata.Pairs(
+		"cookie", fmt.Sprintf("sessionId=%s", sessionID),
+		"content-type", "application/grpc",
+	)
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
+	if err := h.connectToAPI(ctx, sessionID, h.AuthService.Credentials, ""); err != nil {
+		sLog.ErrorCtx(ctx, "Failed to connect to API", "error", err)
+		return err
+	}
+
+	os.Setenv("EDGE_ADAPTER_SERVICE_ADDRESS", BaseAddress)
+
+	if err := h.connectToEdgeAdapter(ctx, sessionID, h.AuthService.Credentials); err != nil {
+		sLog.ErrorCtx(ctx, "Failed to connect to EdgeAdapter service", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (h *EdgeProvider) GetValidationRule(ctx context.Context) model.ValidationRule {
+	return model.ValidationRule{
+		AllowSidecar: false,
+		ComponentValidationRule: model.ComponentValidationRule{
+			RequiredProperties:    []string{"app.id", "app.version"},
+			OptionalProperties:    []string{},
+			RequiredComponentType: "",
+			RequiredMetadata:      []string{},
+			OptionalMetadata:      []string{},
+			ChangeDetectionProperties: []model.PropertyDesc{
+				{Name: "app.id", IgnoreCase: false, SkipIfMissing: false},
+				{Name: "app.version", IgnoreCase: false, SkipIfMissing: false},
+			},
+		},
+	}
+}
+
+func (h *EdgeProvider) Apply(ctx context.Context, deployment model.DeploymentSpec, step model.DeploymentStep, isDryRun bool) (map[string]model.ComponentResultSpec, error) {
+	ctx, span := observability.StartSpan("Edge Target Provider", ctx, &map[string]string{
+		"method": "Apply",
+	})
+	var err error = nil
+	defer observ_utils.CloseSpanWithError(span, &err)
+	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
+
+	sLog.InfoCtx(ctx, "  P (Edge Target): Apply()")
+
+	validationRule := h.GetValidationRule(ctx)
+	components := make([]model.ComponentSpec, len(step.Components))
+	for i, componentStep := range step.Components {
+		components[i] = componentStep.Component
+	}
+	if validationErr := validationRule.Validate(components); validationErr != nil {
+		sLog.ErrorCtx(ctx, "Component validation failed", "error", validationErr)
+		return nil, validationErr
+	}
+
+	if isDryRun {
+		sLog.InfoCtx(ctx, "Dry run mode - skipping actual deployment")
+		return make(map[string]model.ComponentResultSpec), nil
+	}
+
+	ctx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	if err := h.establishEdgeConnection(ctx); err != nil {
+		sLog.ErrorCtx(ctx, "Failed to establish edge connection", "error", err)
+		return nil, err
+	}
+
+	results := make(map[string]model.ComponentResultSpec)
+
+	for _, componentStep := range step.Components {
+		if componentStep.Action == model.ComponentUpdate {
+			result, err := h.deployEdgeComponent(ctx, componentStep.Component)
+			if err != nil {
+				sLog.ErrorCtx(ctx, "Failed to deploy component", "component", componentStep.Component.Name, "error", err)
+				results[componentStep.Component.Name] = model.ComponentResultSpec{
+					Status:  v1alpha2.UpdateFailed,
+					Message: fmt.Sprintf("Failed to deploy component: %v", err),
+				}
+			} else {
+				results[componentStep.Component.Name] = result
+			}
+		}
+	}
+
+	return results, nil
+}
+
+func (h *EdgeProvider) deployEdgeComponent(ctx context.Context, component model.ComponentSpec) (model.ComponentResultSpec, error) {
+	appID, ok := component.Properties["app.id"]
+	if !ok {
+		return model.ComponentResultSpec{}, fmt.Errorf("app.id is required")
+	}
+	appVersion, ok := component.Properties["app.version"]
+	if !ok {
+		return model.ComponentResultSpec{}, fmt.Errorf("app.version is required")
+	}
+
+	request := &edge_adapter.EdgeAdapterGrpcRequest{
+		Name:   component.Name,
+		Kind:   component.Type,
+		Labels: make(map[string]string),
+		AppSpec: &edge_adapter.EdgeAppSpec{
+			Name:  fmt.Sprintf("%s", appID),
+			Image: fmt.Sprintf("%s:%s", appID, appVersion),
+		},
+	}
+
+	for key, value := range component.Properties {
+		request.Labels[key] = fmt.Sprintf("%v", value)
+	}
+	if deviceID, exists := component.Properties["device.id"]; exists {
+		request.DeviceInfo = &edge_adapter.EdgeAdapterGrpcRequest_DeviceId{
+			DeviceId: fmt.Sprintf("%v", deviceID),
+		}
+	} else {
+		request.DeviceInfo = &edge_adapter.EdgeAdapterGrpcRequest_NodeSpec{
+			NodeSpec: &edge_adapter.NodeSpec{
+				Addresses: []string{"default"},
+			},
+		}
+	}
+
+	if request.AppSpec.Resources == nil {
+		request.AppSpec.Resources = &edge_adapter.Resource{
+			Limits: make(map[string]string),
+		}
+	}
+
+	if memory, exists := component.Properties["resources.memory"]; exists {
+		request.AppSpec.Resources.Limits["memory"] = fmt.Sprintf("%v", memory)
+	}
+	if cpu, exists := component.Properties["resources.cpu"]; exists {
+		request.AppSpec.Resources.Limits["cpu"] = fmt.Sprintf("%v", cpu)
+	}
+
+	response, err := h.EdgeAdapterClient.DeployAsync(ctx, request)
+	if err != nil {
+		return model.ComponentResultSpec{}, fmt.Errorf("failed to deploy via EdgeAdapter: %w", err)
+	}
+
+	if response.HttpCode != 200 {
+		return model.ComponentResultSpec{
+			Status:  v1alpha2.UpdateFailed,
+			Message: fmt.Sprintf("EdgeAdapter deployment failed: HTTP %d, Error %d, %s", response.HttpCode, response.ErrorCode, response.Message),
+		}, nil
+	}
+
+	return model.ComponentResultSpec{
+		Status:  v1alpha2.Updated,
+		Message: "Component deployed successfully via EdgeAdapter",
+	}, nil
 }
