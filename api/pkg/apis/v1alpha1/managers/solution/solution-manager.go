@@ -320,7 +320,6 @@ func (s *SolutionManager) Reconcile(ctx context.Context, deployment model.Deploy
 	mergedState := MergeDeploymentStates(&currentState, desiredState)
 	var plan model.DeploymentPlan
 	plan, err = PlanForDeployment(deployment, mergedState)
-
 	if err != nil {
 		summary.SummaryMessage = "failed to plan for deployment: " + err.Error()
 		log.ErrorfCtx(ctx, " M (Solution): failed to plan for deployment: %+v", err)
@@ -350,7 +349,6 @@ func (s *SolutionManager) Reconcile(ctx context.Context, deployment model.Deploy
 
 	plannedCount := 0
 	planSuccessCount := 0
-
 	for _, step := range plan.Steps {
 		log.DebugfCtx(ctx, " M (Solution): processing step with Role %s on target %s", step.Role, step.Target)
 		for _, component := range step.Components {
@@ -384,7 +382,6 @@ func (s *SolutionManager) Reconcile(ctx context.Context, deployment model.Deploy
 		var provider providers.IProvider
 		if override == nil {
 			targetSpec := s.getTargetStateForStep(step, deployment, previousDesiredState)
-
 			provider, err = sp.CreateProviderForTargetRole(s.Context, step.Role, targetSpec, override)
 			if err != nil {
 				summary.SummaryMessage = "failed to create provider:" + err.Error()
@@ -440,11 +437,7 @@ func (s *SolutionManager) Reconcile(ctx context.Context, deployment model.Deploy
 		}()
 		for i := 0; i < retryCount; i++ {
 			deployment.Instance.Spec.Scope = getCurrentApplicationScope(ctx, deployment.Instance, deployment.Targets[step.Target])
-			componentResults, stepError = (provider.(tgt.ITargetProvider)).Apply(ctx, model.TargetProviderApplyReference{
-				Deployment: dep,
-				Step:       step,
-				IsDryRun:   deployment.IsDryRun,
-			})
+			componentResults, stepError = (provider.(tgt.ITargetProvider)).Apply(ctx, dep, step, deployment.IsDryRun)
 			if stepError == nil {
 				targetResult[step.Target] = 1
 				summary.AllAssignedDeployed = plannedCount == planSuccessCount
@@ -616,7 +609,6 @@ func (s *SolutionManager) Get(ctx context.Context, deployment model.DeploymentSp
 	}
 	var plan model.DeploymentPlan
 	plan, err = PlanForDeployment(deployment, state)
-
 	if err != nil {
 		log.ErrorfCtx(ctx, " M (Solution): failed to plan for deployment: %+v", err)
 		return ret, nil, err
@@ -657,10 +649,7 @@ func (s *SolutionManager) Get(ctx context.Context, deployment model.DeploymentSp
 			provider = override
 		}
 		var components []model.ComponentSpec
-		components, err = (provider.(tgt.ITargetProvider)).Get(ctx, model.TargetProviderGetReference{
-			Deployment: deployment,
-			References: step.Components,
-		})
+		components, err = (provider.(tgt.ITargetProvider)).Get(ctx, deployment, step.Components)
 
 		if err != nil {
 			log.WarnfCtx(ctx, " M (Solution): failed to get components: %+v", err)

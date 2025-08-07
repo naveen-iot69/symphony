@@ -85,7 +85,7 @@ func toAdbProviderConfig(config providers.IProviderConfig) (AdbProviderConfig, e
 	return ret, err
 }
 
-func (i *AdbProvider) Get(ctx context.Context, reference model.TargetProviderGetReference) ([]model.ComponentSpec, error) {
+func (i *AdbProvider) Get(ctx context.Context, deployment model.DeploymentSpec, references []model.ComponentStep) ([]model.ComponentSpec, error) {
 	ctx, span := observability.StartSpan("Android ADB Provider", ctx, &map[string]string{
 		"method": "Get",
 	})
@@ -93,18 +93,18 @@ func (i *AdbProvider) Get(ctx context.Context, reference model.TargetProviderGet
 	defer observ_utils.CloseSpanWithError(span, &err)
 	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
 
-	if reference.Deployment.Instance.Spec == nil {
+	if deployment.Instance.Spec == nil {
 		err = errors.New("deployment instance spec is nil")
 		aLog.ErrorfCtx(ctx, "  P (Android ADB Target): failed to get deployment, error: %+v", err)
 		return nil, err
 	}
-	aLog.InfofCtx(ctx, "  P (Android ADB Target): getting artifacts: %s - %s", reference.Deployment.Instance.Spec.Scope, reference.Deployment.Instance.ObjectMeta.Name)
+	aLog.InfofCtx(ctx, "  P (Android ADB Target): getting artifacts: %s - %s", deployment.Instance.Spec.Scope, deployment.Instance.ObjectMeta.Name)
 
 	ret := make([]model.ComponentSpec, 0)
 
 	re := regexp.MustCompile(`^package:(\w+\.)+\w+$`)
 
-	for _, component := range reference.References {
+	for _, component := range references {
 		if p, ok := component.Component.Properties[model.AppPackage]; ok {
 			params := make([]string, 0)
 			params = append(params, "shell")
@@ -134,7 +134,7 @@ func (i *AdbProvider) Get(ctx context.Context, reference model.TargetProviderGet
 	return ret, nil
 }
 
-func (i *AdbProvider) Apply(ctx context.Context, reference model.TargetProviderApplyReference) (map[string]model.ComponentResultSpec, error) {
+func (i *AdbProvider) Apply(ctx context.Context, deployment model.DeploymentSpec, step model.DeploymentStep, isDryRun bool) (map[string]model.ComponentResultSpec, error) {
 	ctx, span := observability.StartSpan("Android ADB Provider", ctx, &map[string]string{
 		"method": "Apply",
 	})
@@ -142,28 +142,28 @@ func (i *AdbProvider) Apply(ctx context.Context, reference model.TargetProviderA
 	defer observ_utils.CloseSpanWithError(span, &err)
 	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
 
-	aLog.InfofCtx(ctx, "  P (Android ADB Target): applying artifacts: %s - %s", reference.Deployment.Instance.Spec.Scope, reference.Deployment.Instance.ObjectMeta.Name)
+	aLog.InfofCtx(ctx, "  P (Android ADB Target): applying artifacts: %s - %s", deployment.Instance.Spec.Scope, deployment.Instance.ObjectMeta.Name)
 
-	components := reference.Step.GetComponents()
+	components := step.GetComponents()
 
 	err = i.GetValidationRule(ctx).Validate(components)
 	if err != nil {
 		aLog.ErrorfCtx(ctx, "  P (Android ADB Target): failed to validate components, error: %v", err)
 		return nil, err
 	}
-	if reference.IsDryRun {
+	if isDryRun {
 		aLog.DebugCtx(ctx, "  P (Android ADB Target): dryRun is enabled, skipping apply")
 		err = nil
 		return nil, nil
 	}
-	ret := reference.Step.PrepareResultMap()
-	components = reference.Step.GetUpdatedComponents()
+	ret := step.PrepareResultMap()
+	components = step.GetUpdatedComponents()
 	if len(components) > 0 {
 		aLog.InfofCtx(ctx, "  P (Android ADB Target): get updated components: count - %d", len(components))
 		for _, component := range components {
 			if component.Name != "" {
 				if p, ok := component.Properties[model.AppImage]; ok && p != "" {
-					if !reference.IsDryRun {
+					if !isDryRun {
 						params := make([]string, 0)
 						params = append(params, "install")
 						params = append(params, utils.FormatAsString(p))
@@ -182,7 +182,7 @@ func (i *AdbProvider) Apply(ctx context.Context, reference model.TargetProviderA
 			}
 		}
 	}
-	components = reference.Step.GetDeletedComponents()
+	components = step.GetDeletedComponents()
 	if len(components) > 0 {
 		aLog.InfofCtx(ctx, "  P (Android ADB Target): get deleted components: count - %d", len(components))
 		for _, component := range components {

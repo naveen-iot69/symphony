@@ -81,29 +81,26 @@ func TestGet(t *testing.T) {
 		GetScript:    filepath.Join(currentFolder, "mock-get.sh"),
 	})
 	require.Nil(t, err)
-	components, err := provider.Get(context.Background(), model.TargetProviderGetReference{
-		Deployment: model.DeploymentSpec{
-			Solution: model.SolutionState{
-				Spec: &model.SolutionSpec{
-					Components: []model.ComponentSpec{
-						{
-							Name: "com1",
-						},
+	components, err := provider.Get(context.Background(), model.DeploymentSpec{
+		Solution: model.SolutionState{
+			Spec: &model.SolutionSpec{
+				Components: []model.ComponentSpec{
+					{
+						Name: "com1",
 					},
 				},
 			},
-			Instance: model.InstanceState{
-				Spec: &model.InstanceSpec{
-					Scope: "test-scope",
-				},
+		},
+		Instance: model.InstanceState{
+			Spec: &model.InstanceSpec{
+				Scope: "test-scope",
 			},
 		},
-		References: []model.ComponentStep{
-			{
-				Action: model.ComponentUpdate,
-				Component: model.ComponentSpec{
-					Name: "com1",
-				},
+	}, []model.ComponentStep{
+		{
+			Action: model.ComponentUpdate,
+			Component: model.ComponentSpec{
+				Name: "com1",
 			},
 		},
 	})
@@ -119,34 +116,31 @@ func TestRemoveScript(t *testing.T) {
 		RemoveScript: "mock-remove.sh",
 	})
 	assert.Nil(t, err)
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: model.DeploymentSpec{
-			Solution: model.SolutionState{
-				Spec: &model.SolutionSpec{
-					Components: []model.ComponentSpec{
-						{
-							Name: "com1",
-						},
-					},
-				},
-			},
-			Instance: model.InstanceState{
-				Spec: &model.InstanceSpec{
-					Scope: "test-scope",
-				},
-			},
-		},
-		Step: model.DeploymentStep{
-			Components: []model.ComponentStep{
-				{
-					Action: model.ComponentDelete,
-					Component: model.ComponentSpec{
+	_, err = provider.Apply(context.Background(), model.DeploymentSpec{
+		Solution: model.SolutionState{
+			Spec: &model.SolutionSpec{
+				Components: []model.ComponentSpec{
+					{
 						Name: "com1",
 					},
 				},
 			},
 		},
-		IsDryRun: false})
+		Instance: model.InstanceState{
+			Spec: &model.InstanceSpec{
+				Scope: "test-scope",
+			},
+		},
+	}, model.DeploymentStep{
+		Components: []model.ComponentStep{
+			{
+				Action: model.ComponentDelete,
+				Component: model.ComponentSpec{
+					Name: "com1",
+				},
+			},
+		},
+	}, false)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "executing script returned error output")
 }
@@ -158,34 +152,31 @@ func TestApplyScript(t *testing.T) {
 		ApplyScript: "mock-apply.sh",
 	})
 	assert.Nil(t, err)
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: model.DeploymentSpec{
-			Solution: model.SolutionState{
-				Spec: &model.SolutionSpec{
-					Components: []model.ComponentSpec{
-						{
-							Name: "com1",
-						},
-					},
-				},
-			},
-			Instance: model.InstanceState{
-				Spec: &model.InstanceSpec{
-					Scope: "test-scope",
-				},
-			},
-		},
-		Step: model.DeploymentStep{
-			Components: []model.ComponentStep{
-				{
-					Action: model.ComponentUpdate,
-					Component: model.ComponentSpec{
+	_, err = provider.Apply(context.Background(), model.DeploymentSpec{
+		Solution: model.SolutionState{
+			Spec: &model.SolutionSpec{
+				Components: []model.ComponentSpec{
+					{
 						Name: "com1",
 					},
 				},
 			},
 		},
-		IsDryRun: false})
+		Instance: model.InstanceState{
+			Spec: &model.InstanceSpec{
+				Scope: "test-scope",
+			},
+		},
+	}, model.DeploymentStep{
+		Components: []model.ComponentStep{
+			{
+				Action: model.ComponentUpdate,
+				Component: model.ComponentSpec{
+					Name: "com1",
+				},
+			},
+		},
+	}, false)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "executing script returned error output")
 }

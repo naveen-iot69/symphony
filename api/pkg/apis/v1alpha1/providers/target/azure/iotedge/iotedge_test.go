@@ -87,7 +87,7 @@ func TestGetNullDevice(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	components, err := provider.Get(context.Background(), model.TargetProviderGetReference{Deployment: model.DeploymentSpec{}, References: nil})
+	components, err := provider.Get(context.Background(), model.DeploymentSpec{}, nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, components)
 	assert.Equal(t, 0, len(components)) //null device shouldn't have any modules
@@ -110,7 +110,7 @@ func TestGetVMDevice(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	components, err := provider.Get(context.Background(), model.TargetProviderGetReference{Deployment: model.DeploymentSpec{}, References: nil})
+	components, err := provider.Get(context.Background(), model.DeploymentSpec{}, nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, components)
 	assert.Equal(t, 1, len(components)) //test vm device should have 1 module
@@ -617,14 +617,11 @@ func TestGetFailed(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	_, err = provider.Get(context.Background(), model.TargetProviderGetReference{
-		Deployment: model.DeploymentSpec{
-			Instance: model.InstanceState{
-				Spec: &model.InstanceSpec{},
-			},
+	_, err = provider.Get(context.Background(), model.DeploymentSpec{
+		Instance: model.InstanceState{
+			Spec: &model.InstanceSpec{},
 		},
-		References: nil,
-	})
+	}, nil)
 	assert.NotNil(t, err)
 }
 
@@ -669,11 +666,7 @@ func TestApplyFailed(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.NotNil(t, err)
 }
 
@@ -767,7 +760,7 @@ func TestGetIoTEdgeModules(t *testing.T) {
 	err = provider.deployToIoTEdge(context.Background(), "default", map[string]string{}, nil, twin, twin)
 	assert.NotNil(t, err)
 
-	err = provider.removeFromIoTEdge(context.Background(), "default", map[string]string{}, nil, twin, twin)
+	err = provider.remvoefromIoTEdge(context.Background(), "default", map[string]string{}, nil, twin, twin)
 	assert.NotNil(t, err)
 }
 
@@ -807,7 +800,7 @@ func TestDeployRemove(t *testing.T) {
 	err = provider.deployToIoTEdge(context.Background(), "default", map[string]string{}, nil, twin, twin)
 	assert.NotNil(t, err)
 
-	err = provider.removeFromIoTEdge(context.Background(), "default", map[string]string{}, nil, twin, twin)
+	err = provider.remvoefromIoTEdge(context.Background(), "default", map[string]string{}, nil, twin, twin)
 	assert.NotNil(t, err)
 }
 

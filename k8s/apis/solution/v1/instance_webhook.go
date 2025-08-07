@@ -144,7 +144,7 @@ func (r *Instance) SetupWebhookWithManager(mgr ctrl.Manager) error {
 			Solution:             solutionSpec,
 			SolutionId:           instance.Spec.Solution,
 			Target:               targetSpec,
-			TargetSelector:       instance.Spec.Target.PropertySelector,
+			TargetSelector:       instance.Spec.Target.Selector,
 			TargetId:             instance.Spec.Target.Name,
 			Topologies:           instance.Spec.Topologies,
 			Pipelines:            instance.Spec.Pipelines,

@@ -55,10 +55,7 @@ func TestMockTargetProviderApply(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 	step = model.DeploymentStep{
 		Components: []model.ComponentStep{
@@ -70,11 +67,7 @@ func TestMockTargetProviderApply(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 }
 
@@ -83,9 +76,6 @@ func TestMockTargetProviderGet(t *testing.T) {
 	err := provider.Init(MockTargetProviderConfig{})
 	assert.Nil(t, err)
 
-	_, err = provider.Get(context.Background(), model.TargetProviderGetReference{
-		Deployment: model.DeploymentSpec{},
-		References: nil,
-	})
+	_, err = provider.Get(context.Background(), model.DeploymentSpec{}, nil)
 	assert.Nil(t, err)
 }

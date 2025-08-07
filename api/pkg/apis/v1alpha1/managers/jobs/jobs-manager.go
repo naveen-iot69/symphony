@@ -469,7 +469,7 @@ func (s *JobsManager) HandleJobEvent(ctx context.Context, event v1alpha2.Event) 
 			}
 
 			//get target candidates
-			targetCandidates := utils.MatchTargets(instance, targets, true)
+			targetCandidates := utils.MatchTargets(instance, targets)
 
 			//create deployment spec
 			var deployment model.DeploymentSpec

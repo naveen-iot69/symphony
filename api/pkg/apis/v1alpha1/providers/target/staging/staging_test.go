@@ -63,24 +63,21 @@ func TestStagingTargetProviderGet(t *testing.T) {
 		},
 	}
 	assert.Nil(t, err)
-	components, err := provider.Get(context.Background(), model.TargetProviderGetReference{
-		Deployment: model.DeploymentSpec{
-			Instance: model.InstanceState{
-				ObjectMeta: model.ObjectMeta{
-					Name: "test",
-				},
-				Spec: &model.InstanceSpec{},
+	components, err := provider.Get(context.Background(), model.DeploymentSpec{
+		Instance: model.InstanceState{
+			ObjectMeta: model.ObjectMeta{
+				Name: "test",
 			},
+			Spec: &model.InstanceSpec{},
 		},
-		References: []model.ComponentStep{
-			{
-				Action: model.ComponentUpdate,
-				Component: model.ComponentSpec{
-					Name: "policies",
-					Type: "yaml.k8s",
-					Properties: map[string]interface{}{
-						"yaml.url": "https://raw.githubusercontent.com/eclipse-symphony/symphony/main/docs/samples/k8s/gatekeeper/policy.yaml",
-					},
+	}, []model.ComponentStep{
+		{
+			Action: model.ComponentUpdate,
+			Component: model.ComponentSpec{
+				Name: "policies",
+				Type: "yaml.k8s",
+				Properties: map[string]interface{}{
+					"yaml.url": "https://raw.githubusercontent.com/eclipse-symphony/symphony/main/docs/samples/k8s/gatekeeper/policy.yaml",
 				},
 			},
 		},
@@ -144,11 +141,7 @@ func TestStagingTargetProviderApply(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 }
 
@@ -208,11 +201,7 @@ func TestStagingTargetProviderRemove(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 }
 
@@ -305,11 +294,7 @@ func TestApply(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 
 	step = model.DeploymentStep{
@@ -320,11 +305,7 @@ func TestApply(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 }
 
@@ -409,10 +390,7 @@ func TestGet(t *testing.T) {
 			Component: component,
 		},
 	}
-	_, err = provider.Get(context.Background(), model.TargetProviderGetReference{
-		Deployment: deployment,
-		References: step,
-	})
+	_, err = provider.Get(context.Background(), deployment, step)
 	assert.Nil(t, err)
 }
 
@@ -485,11 +463,7 @@ func TestGetCatalogsFailed(t *testing.T) {
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.NotNil(t, err)
 }
 

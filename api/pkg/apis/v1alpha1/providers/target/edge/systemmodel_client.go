@@ -7,8 +7,6 @@ package edge
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
-	"os"
 
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/providers/target/edge/api/system_model"
 	"google.golang.org/grpc/credentials"
@@ -31,10 +29,8 @@ func (t tokenAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[st
 }
 
 func NewSystemModelClient(ctx context.Context, token string, tlsCredentials *tls.Config) (system_model.SystemModelClient, error) {
-	addr, ok := os.LookupEnv("MODEL_SERVICE_ADDRESS")
-	if !ok {
-		return nil, fmt.Errorf("system model service address is not set")
-	}
+	addr := "eaep25:6201"
+
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(credentials.NewTLS(tlsCredentials)),
 	}

@@ -11,14 +11,13 @@ import (
 
 func TestGroupTargetProviderConfigFromMapNil(t *testing.T) {
 	_, err := GroupTargetProviderConfigFromMap(nil)
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 }
 
 func TestGroupTargetProviderConfigFromMapEmpty(t *testing.T) {
 	_, err := GroupTargetProviderConfigFromMap(map[string]string{})
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 }
-
 func TestGroupTargetProviderInitEmptyConfig(t *testing.T) {
 	config := GroupTargetProviderConfig{}
 	provider := GroupTargetProvider{}
@@ -26,274 +25,104 @@ func TestGroupTargetProviderInitEmptyConfig(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestAComponentAssignmentsSingle(t *testing.T) {
-	config := GroupTargetProviderConfig{}
+func TestPatchTargetPropertyCopy(t *testing.T) {
 	provider := GroupTargetProvider{}
-	err := provider.Init(config)
-	assert.Nil(t, err)
-	components := []model.ComponentSpec{
-		{
-			Name:       "component1",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-	}
-	targets := []model.TargetState{
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target1",
-				Namespace: "default",
+	target := model.TargetState{
+		Spec: &model.TargetSpec{
+			Properties: map[string]string{
+				"ha-set": "ha-set1",
 			},
 		},
 	}
-	assignments, err := provider.assignComponents(components, targets)
+	patch := map[string]string{
+		"ha-set": "~COPY_ha-set",
+	}
+	patchedTarget, err := provider.patchTargetProperty(target, patch, nil, nil, false)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(assignments))
-	assert.Equal(t, 1, len(assignments["target1"]))
-	assert.Equal(t, "component1", assignments["target1"][0])
+	assert.Equal(t, "ha-set1", patchedTarget.Spec.Properties["ha-set"])
 }
 
-func TestAComponentAssignmentsDouble(t *testing.T) {
-	config := GroupTargetProviderConfig{}
+func TestPatchTargetPropertyRemove(t *testing.T) {
 	provider := GroupTargetProvider{}
-	err := provider.Init(config)
-	assert.Nil(t, err)
-	components := []model.ComponentSpec{
-		{
-			Name:       "component1",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-		{
-			Name:       "component2",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-	}
-	targets := []model.TargetState{
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target1",
-				Namespace: "default",
+	target := model.TargetState{
+		Spec: &model.TargetSpec{
+			Properties: map[string]string{
+				"ha-set": "ha-set1",
 			},
 		},
 	}
-	assignments, err := provider.assignComponents(components, targets)
+	patch := map[string]string{
+		"ha-set": "~REMOVE",
+	}
+	patchedTarget, err := provider.patchTargetProperty(target, patch, nil, nil, false)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(assignments))
-	assert.Equal(t, 2, len(assignments["target1"]))
-	assert.Equal(t, "component1", assignments["target1"][0])
-	assert.Equal(t, "component2", assignments["target1"][1])
+	assert.NotContains(t, patchedTarget.Spec.Properties, "ha-set")
 }
 
-func TestAComponentAssignmentsSingleTwoTargets(t *testing.T) {
-	config := GroupTargetProviderConfig{}
-	provider := GroupTargetProvider{}
-	err := provider.Init(config)
-	assert.Nil(t, err)
-	components := []model.ComponentSpec{
-		{
-			Name:       "component1",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-	}
-	targets := []model.TargetState{
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target1",
-				Namespace: "default",
-			},
-		},
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target2",
-				Namespace: "default",
-			},
-		},
-	}
-	assignments, err := provider.assignComponents(components, targets)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(assignments))
-	assert.Equal(t, 1, len(assignments["target1"]))
-	assert.Equal(t, "component1", assignments["target1"][0])
-	assert.Equal(t, 0, len(assignments["target2"]))
-}
-
-func TestAComponentAssignmentsDoubleTwoTargets(t *testing.T) {
-	config := GroupTargetProviderConfig{}
-	provider := GroupTargetProvider{}
-	err := provider.Init(config)
-	assert.Nil(t, err)
-	components := []model.ComponentSpec{
-		{
-			Name:       "component1",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-		{
-			Name:       "component2",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-	}
-	targets := []model.TargetState{
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target1",
-				Namespace: "default",
-			},
-		},
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target2",
-				Namespace: "default",
-			},
-		},
-	}
-	assignments, err := provider.assignComponents(components, targets)
-	assert.Nil(t, err)
-	assert.Equal(t, 2, len(assignments))
-	assert.Equal(t, 1, len(assignments["target1"]))
-	assert.Equal(t, 1, len(assignments["target2"]))
-	assert.Equal(t, "component1", assignments["target1"][0])
-	assert.Equal(t, "component2", assignments["target2"][0])
-}
-
-func TestAComponentAssignmentsDoubleThreeTargets(t *testing.T) {
-	config := GroupTargetProviderConfig{}
-	provider := GroupTargetProvider{}
-	err := provider.Init(config)
-	assert.Nil(t, err)
-	components := []model.ComponentSpec{
-		{
-			Name:       "component1",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-		{
-			Name:       "component2",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-	}
-	targets := []model.TargetState{
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target1",
-				Namespace: "default",
-			},
-		},
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target2",
-				Namespace: "default",
-			},
-		},
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target3",
-				Namespace: "default",
-			},
-		},
-	}
-	assignments, err := provider.assignComponents(components, targets)
-	assert.Nil(t, err)
-	assert.Equal(t, 3, len(assignments))
-	assert.Equal(t, 1, len(assignments["target1"]))
-	assert.Equal(t, 1, len(assignments["target2"]))
-	assert.Equal(t, 0, len(assignments["target3"]))
-	assert.Equal(t, "component1", assignments["target1"][0])
-	assert.Equal(t, "component2", assignments["target2"][0])
-}
-
-func TestAComponentAssignmentsDoubleThreeTargetsExisting(t *testing.T) {
-	config := GroupTargetProviderConfig{}
-	provider := GroupTargetProvider{}
-	err := provider.Init(config)
-	assert.Nil(t, err)
-	components := []model.ComponentSpec{
-		{
-			Name:       "component1",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-		{
-			Name:       "component2",
-			Type:       "group",
-			Properties: map[string]interface{}{},
-		},
-	}
-	targets := []model.TargetState{
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target1",
-				Namespace: "default",
-			},
-			Status: model.TargetStatus{
-				Properties: map[string]string{
-					"component:component1": `{"Name":"component1","Type":"group","Properties":{}}`,
-				},
-			},
-		},
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target2",
-				Namespace: "default",
-			},
-		},
-		{
-			ObjectMeta: model.ObjectMeta{
-				Name:      "target3",
-				Namespace: "default",
-			},
-			Status: model.TargetStatus{
-				Properties: map[string]string{
-					"component:component2": `{"Name":"component2","Type":"group","Properties":{}}`,
-				},
-			},
-		},
-	}
-	assignments, err := provider.assignComponents(components, targets)
-	assert.Nil(t, err)
-	assert.Equal(t, 3, len(assignments))
-	assert.Equal(t, 1, len(assignments["target1"]))
-	assert.Equal(t, 0, len(assignments["target2"]))
-	assert.Equal(t, 1, len(assignments["target3"]))
-	assert.Equal(t, "component1", assignments["target1"][0])
-	assert.Equal(t, "component2", assignments["target3"][0])
-}
-
-func TestGroupTargetProviderApply(t *testing.T) {
-	testGroupPatcher := os.Getenv("TEST_GROUP_APPLY")
-	if testGroupPatcher == "" {
-		t.Skip("Skipping because TEST_GROUP_APPLY enviornment variable is not set")
-	}
-	os.Setenv("SYMPHONY_API_URL", "http://localhost:8082/v1alpha2/")
+func TestGroupTargetProviderTargetSelector(t *testing.T) {
+	// testGroupPatcher := os.Getenv("TEST_GROUP_PATCHER")
+	// if testGroupPatcher == "" {
+	// 	t.Skip("Skipping because TEST_GROUP_PATCHER enviornment variable is not set")
+	// }
+	os.Setenv("SYMPHONY_API_URL", "http://localhost:8080/v1alpha2/")
 	os.Setenv("USE_SERVICE_ACCOUNT_TOKENS", "false")
 	config := GroupTargetProviderConfig{
 		User:     "admin",
 		Password: "",
-		TargetSelector: model.TargetSelector{
-			LabelSelector: map[string]string{
-				"haSet": "ha-set1",
-				"kind":  "ipc",
-			},
-		},
 	}
 	provider := GroupTargetProvider{}
 	err := provider.Init(config)
 	assert.Nil(t, err)
 
-	component1 := model.ComponentSpec{
-		Name:       "Softdpac_2",
-		Type:       "container",
-		Properties: map[string]interface{}{},
-	}
-	component2 := model.ComponentSpec{
-		Name:       "Softdpac_3",
-		Type:       "container",
-		Properties: map[string]interface{}{},
+	component := model.ComponentSpec{
+		Name: "ha-set",
+		Type: "group",
+		Properties: map[string]interface{}{
+			"targetPropertySelector": map[string]interface{}{
+				"ha-set": "ha-set1",
+				"role":   "member",
+			},
+			"targetStateSelector": map[string]interface{}{
+				"status": "Succeeded",
+				"foo":    "barbar",
+			},
+			"sparePropertySelector": map[string]interface{}{
+				"ha-set": "ha-set1",
+				"role":   "spare",
+			},
+			"spareStateSelector": map[string]interface{}{
+				"status": "Succeeded",
+			},
+			"minMatchCount": 2,
+			"lowMatchAction": GroupPatchAction{
+				SparePatch: map[string]string{
+					"ha-sets": "~REMOVE",
+					"ha-set":  "ha-set1",
+					"role":    "member",
+				},
+				TargetPatch: map[string]string{
+					"ha-sets": "~COPY_ha-set",
+					"ha-set":  "~REMOVE",
+					"role":    "spare",
+				},
+			},
+			"spareComponents": []model.ComponentSpec{
+				{
+					Name: "spare-component",
+					Properties: map[string]interface{}{
+						"foo": "bar3",
+					},
+				},
+			},
+			"memberComponents": []model.ComponentSpec{
+				{
+					Name: "target-component",
+					Properties: map[string]interface{}{
+						"foo": "bar2",
+					},
+				},
+			},
+		},
 	}
 	deployment := model.DeploymentSpec{
 		Instance: model.InstanceState{
@@ -306,7 +135,7 @@ func TestGroupTargetProviderApply(t *testing.T) {
 		},
 		Solution: model.SolutionState{
 			Spec: &model.SolutionSpec{
-				Components: []model.ComponentSpec{component1, component2},
+				Components: []model.ComponentSpec{component},
 			},
 		},
 	}
@@ -314,18 +143,10 @@ func TestGroupTargetProviderApply(t *testing.T) {
 		Components: []model.ComponentStep{
 			{
 				Action:    model.ComponentUpdate,
-				Component: component1,
-			},
-			{
-				Action:    model.ComponentUpdate,
-				Component: component2,
+				Component: component,
 			},
 		},
 	}
-	_, err = provider.Apply(context.Background(), model.TargetProviderApplyReference{
-		Deployment: deployment,
-		Step:       step,
-		IsDryRun:   false,
-	})
+	_, err = provider.Apply(context.Background(), deployment, step, false)
 	assert.Nil(t, err)
 }

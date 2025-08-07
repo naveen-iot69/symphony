@@ -24,7 +24,7 @@ const loggerName = "providers.target.edge"
 var sLog = logger.NewLogger(loggerName)
 
 var (
-	BaseAddress = "https://10.228.234.29:6201"
+	BaseAddress = "https://EAEP25:6201"
 )
 
 type EdgeProviderConfig struct {
@@ -101,28 +101,28 @@ func (h *EdgeProvider) connectToAPI(ctx context.Context, sessionId string, crede
 	return err
 }
 
-func (h *EdgeProvider) establishConnection(ctx context.Context) error {
+func (h *EdgeProvider) establishConnection(ctx context.Context) (context.Context, error) {
 	sessionID, _, err := h.AuthService.GetSessionIdAsync(BaseAddress)
 	if err != nil {
 		sLog.ErrorCtx(ctx, "Failed to get session ID", "error", err)
-		return err
+		return ctx, err
 	}
 
 	md := metadata.Pairs(
 		"cookie", fmt.Sprintf("sessionId=%s", sessionID),
 		"content-type", "application/grpc",
 	)
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	ctxNew := metadata.NewOutgoingContext(ctx, md)
 
-	if err := h.connectToAPI(ctx, sessionID, h.AuthService.Credentials, ""); err != nil {
+	if err := h.connectToAPI(ctxNew, sessionID, h.AuthService.Credentials, ""); err != nil {
 		sLog.ErrorCtx(ctx, "Failed to connect to API", "error", err)
-		return err
+		return ctxNew, err
 	}
 
-	return nil
+	return ctxNew, nil
 }
 
-func (h *EdgeProvider) Get(ctx context.Context, reference model.TargetProviderGetReference) ([]model.ComponentSpec, error) {
+func (h *EdgeProvider) Get(ctx context.Context, deployment model.DeploymentSpec, references []model.ComponentStep) ([]model.ComponentSpec, error) {
 	ctx, span := observability.StartSpan("Edge Target Provider", ctx, &map[string]string{
 		"method": "Get",
 	})
@@ -130,26 +130,30 @@ func (h *EdgeProvider) Get(ctx context.Context, reference model.TargetProviderGe
 	defer observ_utils.CloseSpanWithError(span, &err)
 	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
 
-	sLog.InfoCtx(ctx, "  P (Edge Target): getting artifacts: %s - %s", reference.Deployment.Instance.Spec.Scope, reference.Deployment.Instance.ObjectMeta.Name)
+	sLog.InfoCtx(ctx, "  P (Edge Target): getting artifacts: %s - %s", deployment.Instance.Spec.Scope, deployment.Instance.ObjectMeta.Name)
 
 	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
 	defer cancelFunc()
 
 	// Session ID is taken every time Get() function is called
-	if err := h.establishConnection(ctx); err != nil {
-		sLog.ErrorCtx(ctx, "Failed to establish connection", "error", err)
+	ctxNew, err := h.establishConnection(ctx)
+	if err != nil {
+		sLog.ErrorCtx(ctxNew, "Failed to establish connection", "error", err)
 		return nil, err
 	}
 
-	app, err := h.SystemClient.GetAppInstanceById(ctx, wrapperspb.String(reference.Deployment.Instance.ObjectMeta.Name))
+	app, err := h.SystemClient.GetAppInstanceById(ctxNew, wrapperspb.String(string(deployment.Instance.ObjectMeta.UID)))
+
+	sLog.Info(app)
+
 	if err != nil {
-		sLog.ErrorCtx(ctx, "Failed to get app by ID", "error", err)
+		sLog.ErrorCtx(ctxNew, "Failed to get app by ID", "error", err)
 		return nil, err
 	}
 
 	if app == nil {
-		sLog.ErrorCtx(ctx, "App not found", "deviceName", reference.Deployment.Instance.ObjectMeta.Name)
-		return nil, fmt.Errorf("app %s not found", reference.Deployment.Instance.ObjectMeta.Name)
+		sLog.ErrorCtx(ctxNew, "App not found", "deviceName", deployment.Instance.ObjectMeta.Name)
+		return nil, fmt.Errorf("app %s not found", deployment.Instance.ObjectMeta.Name)
 	}
 
 	compSpec := appToComponentSpec(app)

@@ -18,7 +18,6 @@ func PlanForDeployment(deployment model.DeploymentSpec, state model.DeploymentSt
 	ret := model.DeploymentPlan{
 		Steps: make([]model.DeploymentStep, 0),
 	}
-
 	for _, c := range state.Components {
 		for _, t := range state.Targets {
 			key := fmt.Sprintf("%s::%s", c.Name, t.Name) //TODO: this assumes provider/component keys don't contain "::"
@@ -53,9 +52,7 @@ func PlanForDeployment(deployment model.DeploymentSpec, state model.DeploymentSt
 			}
 		}
 	}
-	ret = ret.RevisedForDeletion()
-
-	return ret, nil
+	return ret.RevisedForDeletion(), nil
 }
 
 func NewDeploymentState(deployment model.DeploymentSpec) (model.DeploymentState, error) {

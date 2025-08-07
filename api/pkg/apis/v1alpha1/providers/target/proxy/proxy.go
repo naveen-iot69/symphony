@@ -119,7 +119,7 @@ func (a *ProxyUpdateProvider) callRestAPI(route string, method string, payload [
 	return bodyBytes, nil
 }
 
-func (i *ProxyUpdateProvider) Get(ctx context.Context, reference model.TargetProviderGetReference) ([]model.ComponentSpec, error) {
+func (i *ProxyUpdateProvider) Get(ctx context.Context, deployment model.DeploymentSpec, references []model.ComponentStep) ([]model.ComponentSpec, error) {
 	_, span := observability.StartSpan("Proxy Provider", ctx, &map[string]string{
 		"method": "Get",
 	})
@@ -127,9 +127,9 @@ func (i *ProxyUpdateProvider) Get(ctx context.Context, reference model.TargetPro
 	defer observ_utils.CloseSpanWithError(span, &err)
 	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
 
-	sLog.InfofCtx(ctx, "  P (Proxy Target): getting artifacts: %s - %s", reference.Deployment.Instance.Spec.Scope, reference.Deployment.Instance.ObjectMeta.Name)
+	sLog.InfofCtx(ctx, "  P (Proxy Target): getting artifacts: %s - %s", deployment.Instance.Spec.Scope, deployment.Instance.ObjectMeta.Name)
 
-	data, _ := json.Marshal(reference.Deployment)
+	data, _ := json.Marshal(deployment)
 	payload, err := i.callRestAPI("instances", "GET", data)
 	if err != nil {
 		sLog.ErrorfCtx(ctx, "  P (Proxy Target): failed to get instances: %+v", err)
@@ -145,7 +145,7 @@ func (i *ProxyUpdateProvider) Get(ctx context.Context, reference model.TargetPro
 	return ret, nil
 }
 
-func (i *ProxyUpdateProvider) Apply(ctx context.Context, reference model.TargetProviderApplyReference) (map[string]model.ComponentResultSpec, error) {
+func (i *ProxyUpdateProvider) Apply(ctx context.Context, deployment model.DeploymentSpec, step model.DeploymentStep, isDryRun bool) (map[string]model.ComponentResultSpec, error) {
 	ctx, span := observability.StartSpan("Proxy Provider", ctx, &map[string]string{
 		"method": "Apply",
 	})
@@ -153,25 +153,25 @@ func (i *ProxyUpdateProvider) Apply(ctx context.Context, reference model.TargetP
 	defer observ_utils.CloseSpanWithError(span, &err)
 	defer observ_utils.EmitUserDiagnosticsLogs(ctx, &err)
 
-	sLog.InfofCtx(ctx, "  P (Proxy Target): applying artifacts: %s - %s", reference.Deployment.Instance.Spec.Scope, reference.Deployment.Instance.ObjectMeta.Name)
+	sLog.InfofCtx(ctx, "  P (Proxy Target): applying artifacts: %s - %s", deployment.Instance.Spec.Scope, deployment.Instance.ObjectMeta.Name)
 
-	components := reference.Step.GetComponents()
+	components := step.GetComponents()
 	err = i.GetValidationRule(ctx).Validate(components)
 	if err != nil {
 		sLog.ErrorfCtx(ctx, "  P (Proxy Target): failed to validate components: %v", err)
 		return nil, err
 	}
-	if reference.IsDryRun {
+	if isDryRun {
 		sLog.DebugfCtx(ctx, "  P (Proxy Target): dryRun is enabled, skipping apply")
 		err = nil
 		return nil, nil
 	}
 
-	ret := reference.Step.PrepareResultMap()
-	components = reference.Step.GetUpdatedComponents()
+	ret := step.PrepareResultMap()
+	components = step.GetUpdatedComponents()
 	if len(components) > 0 {
 		sLog.InfofCtx(ctx, "  P (Proxy Target): get updated components: count - %d", len(components))
-		data, _ := json.Marshal(reference.Deployment)
+		data, _ := json.Marshal(deployment)
 		payload, err := i.callRestAPI("instances", "POST", data)
 
 		if err != nil {
@@ -194,10 +194,10 @@ func (i *ProxyUpdateProvider) Apply(ctx context.Context, reference model.TargetP
 		}
 	}
 
-	components = reference.Step.GetDeletedComponents()
+	components = step.GetDeletedComponents()
 	if len(components) > 0 {
 		sLog.InfofCtx(ctx, "  P (Proxy Target): get deleted components: count - %d", len(components))
-		data, _ := json.Marshal(reference.Deployment)
+		data, _ := json.Marshal(deployment)
 		_, err = i.callRestAPI("instances", "DELETE", data)
 		if err != nil {
 			sLog.ErrorfCtx(ctx, "  P (Proxy Target): failed to delete instances: %+v", err)

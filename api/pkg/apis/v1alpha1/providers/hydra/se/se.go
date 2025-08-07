@@ -10,9 +10,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/eclipse-symphony/symphony/api/pkg/apis/v1alpha1/model"
-	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2"
 	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2/contexts"
 	"github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2/observability"
 	observ_utils "github.com/eclipse-symphony/symphony/coa/pkg/apis/v1alpha2/observability/utils"
@@ -23,107 +23,87 @@ import (
 var aLog = logger.NewLogger("coa.runtime")
 
 type DesiredState struct {
-	Apps    []App    `json:"Apps"`
-	Devices []Device `json:"Devices"`
+	Apps    []App    `json:"apps"`
+	Devices []Device `json:"devices"`
 }
 
 type App struct {
-	Version  string     `json:"Version,omitempty"`
-	Kind     string     `json:"Kind"`
-	Metadata Metadata   `json:"Metadata"`
-	Spec     AppSpec    `json:"Spec"`
-	Status   *AppStatus `json:"Status,omitempty"`
-	Deleted  bool       `json:"Deleted,omitempty"`
+	Version  string     `json:"version,omitempty"`
+	Kind     string     `json:"kind"`
+	Metadata Metadata   `json:"metadata"`
+	Spec     AppSpec    `json:"spec"`
+	Status   *AppStatus `json:"status,omitempty"`
 }
 
 type Metadata struct {
-	Name    string            `json:"Name"`
-	Labels  map[string]string `json:"Labels"`
-	Uuid    string            `json:"Uuid"`
-	OwnerId string            `json:"OwnerId"`
+	Name   string            `json:"name"`
+	Labels map[string]string `json:"labels"`
 }
 
 type AppSpec struct {
-	Container ContainerSpec `json:"Container"`
-	Affinity  Affinity      `json:"Affinity"`
-	HasBlob   bool          `json:"HasBlob"`
-	Blob      []interface{} `json:"Blob"`
-	DataCase  int           `json:"DataCase"`
+	Container ContainerSpec `json:"container"`
+	Affinity  Affinity      `json:"affinity"`
 }
 
 type ContainerSpec struct {
-	Name      string          `json:"Name"`
-	Image     string          `json:"Image"`
-	Networks  []Network       `json:"Networks"`
-	Resources ContainerLimits `json:"Resources"`
+	Name      string          `json:"name"`
+	Image     string          `json:"image"`
+	Networks  []Network       `json:"networks"`
+	Resources ContainerLimits `json:"resources"`
 }
 
 type Network struct {
-	Ipv4      string `json:"Ipv4"`
-	Ipv6      string `json:"Ipv6"`
-	NetworkId string `json:"NetworkId"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
 }
 
 type ContainerLimits struct {
-	Limits ResourceLimits `json:"Limits"`
+	Limits ResourceLimits `json:"limits"`
 }
 
 type ResourceLimits struct {
-	Memory string `json:"Memory"`
-	CPUs   string `json:"Cpus"`
+	Memory string `json:"memory"`
+	CPUs   string `json:"cpus"`
 }
 
 type Affinity struct {
-	PreferredHosts  []string `json:"PreferredHosts"`
-	AppAntiAffinity []string `json:"AppAntiAffinity"`
+	PreferredHosts  []string `json:"preferredHosts"`
+	AppAntiAffinity []string `json:"appAntiAffinity"`
 }
 
 type AppStatus struct {
-	Status          string `json:"Status"`
-	TimeStamp       string `json:"TimeStamp"`
-	RunningHost     string `json:"RunningHost"`
-	InterlinkStatus string `json:"InterlinkStatus"`
+	Status      string `json:"status"`
+	TimeStamp   string `json:"timeStamp"`
+	RunningHost string `json:"runningHost"`
 }
 
 type Device struct {
-	Kind        string        `json:"Kind"`
-	Metadata    Metadata      `json:"Metadata"`
-	Spec        DeviceSpec    `json:"Spec"`
-	Status      *DeviceStatus `json:"Status,omitempty"`
-	TimeSetting interface{}   `json:"TimeSetting"`
-	Deleted     bool          `json:"Deleted"`
+	Kind     string     `json:"kind"`
+	Metadata Metadata   `json:"metadata"`
+	Spec     DeviceSpec `json:"spec"`
 }
 
 type DeviceSpec struct {
-	Addresses              []string           `json:"Addresses"`
-	Networks               []DeviceNetwork    `json:"Networks,omitempty"`
-	ContainerNetworks      []ContainerNetwork `json:"ContainerNetworks"`
-	ReservedAppInterlinkIp string             `json:"ReservedAppInterlinkIp"`
+	Addresses         []string           `json:"addresses"`
+	Networks          []DeviceNetwork    `json:"networks,omitempty"`
+	ContainerNetworks []ContainerNetwork `json:"containerNetworks"`
 }
 
 type DeviceNetwork struct {
-	NicList        []string `json:"NicList"`
-	NetName        string   `json:"NetName"`
-	NicName        string   `json:"NicName"`
-	RedundancyMode string   `json:"RedundancyMode"`
-	Ipv4           string   `json:"Ipv4"`
-	Gateway        string   `json:"Gateway"`
+	NICList        []string `json:"nicList"`
+	NetName        string   `json:"netName"`
+	NICName        string   `json:"nicName"`
+	RedundancyMode string   `json:"redundancyMode"`
+	IPv4           string   `json:"ipv4"`
+	Gateway        string   `json:"gateway"`
 }
 
 type ContainerNetwork struct {
-	Subnet    string `json:"Subnet"`
-	Gateway   string `json:"Gateway"`
-	NetworkID string `json:"NetworkId"`
-	NicName   string `json:"NicName"`
-	Type      string `json:"Type"`
-}
-
-type DeviceStatus struct {
-	Status              string        `json:"Status"`
-	TimeStamp           string        `json:"TimeStamp"`
-	RunningAppInstances []interface{} `json:"RunningAppInstances"`
-	InterlinkStatus     string        `json:"InterlinkStatus"`
-	NtpStatus           string        `json:"NtpStatus"`
+	Subnet    string `json:"subnet"`
+	Gateway   string `json:"gateway"`
+	NetworkID string `json:"networkId"`
+	NICName   string `json:"nicName"`
+	Type      string `json:"type"`
 }
 
 type SEProviderConfig struct {
@@ -207,21 +187,10 @@ func (i *SEProvider) SetArtifact(system string, artifact []byte) (model.Artifact
 	}
 
 	ret := model.ArtifactPack{
-		Targets:            []model.TargetState{},
-		SolutionContainers: []model.SolutionContainerState{},
-		Solutions:          []model.SolutionState{},
-		Instances:          []model.InstanceState{},
+		Targets: []model.TargetState{},
 	}
 
-	lastSeenDeviceKind := ""
 	for _, device := range desiredState.Devices {
-		if lastSeenDeviceKind == "" {
-			lastSeenDeviceKind = device.Kind
-		} else if device.Kind != lastSeenDeviceKind {
-			err := v1alpha2.NewCOAError(nil, "devices must be of the same kind", v1alpha2.InvalidArgument)
-			aLog.ErrorfCtx(ctx, "  P (SE Hydra): SetArtifact failed - %s", err.Error())
-			return model.ArtifactPack{}, err
-		}
 		target := model.TargetState{
 			ObjectMeta: model.ObjectMeta{
 				Name: device.Metadata.Name,
@@ -235,9 +204,6 @@ func (i *SEProvider) SetArtifact(system string, artifact []byte) (model.Artifact
 			target.ObjectMeta.Labels[k] = v
 		}
 		target.ObjectMeta.Labels["kind"] = device.Kind
-		if i.Config.HASet != "" {
-			target.ObjectMeta.Labels["haSet"] = i.Config.HASet
-		}
 		target.Spec.DisplayName = device.Metadata.Name
 		target.Spec.Properties = make(map[string]string)
 		err = setPropertyValue(target.Spec.Properties, "addresses", device.Spec.Addresses)
@@ -259,7 +225,7 @@ func (i *SEProvider) SetArtifact(system string, artifact []byte) (model.Artifact
 			{
 				Bindings: []model.BindingSpec{
 					{
-						Role:     "container",
+						Role:     "instance",
 						Provider: "providers.target.se",
 						Config:   map[string]string{},
 					},
@@ -269,39 +235,71 @@ func (i *SEProvider) SetArtifact(system string, artifact []byte) (model.Artifact
 		ret.Targets = append(ret.Targets, target)
 	}
 
-	selector := model.TargetSelector{
-		LabelSelector: map[string]string{
-			"haSet": i.Config.HASet,
-			"kind":  lastSeenDeviceKind,
-		},
-		// StateSelector: map[string]string{
-		// 	"probed": "true",
-		// },
-	}
-	selectorData, _ := json.Marshal(selector)
-
 	if i.Config.HASet != "" {
+		for _, target := range ret.Targets {
+			if target.Spec.Properties == nil {
+				target.Spec.Properties = make(map[string]string)
+			}
+			if strings.Contains(target.ObjectMeta.Name, "spare") {
+				if _, ok := target.Spec.Properties["ha-sets"]; !ok {
+					target.Spec.Properties["ha-sets"] = i.Config.HASet
+					target.Spec.Properties["role"] = "spare"
+				}
+			} else {
+				if _, ok := target.Spec.Properties["ha-set"]; !ok {
+					target.Spec.Properties["ha-set"] = i.Config.HASet
+					target.Spec.Properties["role"] = "member"
+				}
+			}
+		}
 		haTarget := model.TargetState{
 			ObjectMeta: model.ObjectMeta{
 				Name: i.Config.HASet,
-				Labels: map[string]string{
-					"haSet": i.Config.HASet,
-					"kind":  "group",
-				},
 			},
 			Spec: &model.TargetSpec{
-				Components: []model.ComponentSpec{},
+				Components: []model.ComponentSpec{
+					{
+						Name: "ha-set",
+						Type: "group",
+						Properties: map[string]interface{}{
+							"targetPropertySelector": map[string]string{
+								"ha-set": i.Config.HASet,
+								"role":   "member",
+							},
+							"targetStateSelector": map[string]string{
+								"status": "Succeeded",
+							},
+							"sparePropertySelector": map[string]string{
+								"ha-set": i.Config.HASet,
+								"role":   "spare",
+							},
+							"spareStateSelector": map[string]string{
+								"status": "Succeeded",
+							},
+							"minMatchCount": 2,
+							"maxMatchCount": 2,
+							"lowMatchAction": map[string]interface{}{
+								"sparePatch": map[string]interface{}{
+									"ha-sets": "~REMOVE",
+									"ha-set":  i.Config.HASet,
+									"role":    "member",
+								},
+								"targetPatch": map[string]interface{}{
+									"ha-set":  "~REMOVE",
+									"ha-sets": "~COPY_ha-set",
+									"role":    "spare",
+								},
+							},
+						},
+					},
+				},
 				Topologies: []model.TopologySpec{
 					{
 						Bindings: []model.BindingSpec{
 							{
-								Role:     "instance",
+								Role:     "group",
 								Provider: "providers.target.group",
-								Config: map[string]string{
-									"user":           "admin",
-									"password":       "",
-									"targetSelector": string(selectorData),
-								},
+								Config:   map[string]string{},
 							},
 						},
 					},
@@ -309,69 +307,6 @@ func (i *SEProvider) SetArtifact(system string, artifact []byte) (model.Artifact
 			},
 		}
 		ret.Targets = append(ret.Targets, haTarget)
-
-		solutionContainer := model.SolutionContainerState{
-			ObjectMeta: model.ObjectMeta{
-				Name: i.Config.HASet,
-				Labels: map[string]string{
-					"haSet": i.Config.HASet,
-					"kind":  "group",
-				},
-			},
-			Spec: &model.SolutionContainerSpec{},
-		}
-
-		ret.SolutionContainers = append(ret.SolutionContainers, solutionContainer)
-
-		solution := model.SolutionState{
-			ObjectMeta: model.ObjectMeta{
-				Name: i.Config.HASet + "-v-v1",
-			},
-			Spec: &model.SolutionSpec{
-				RootResource: i.Config.HASet,
-			},
-		}
-
-		for _, app := range desiredState.Apps {
-			component := model.ComponentSpec{
-				Name: app.Metadata.Name,
-				Type: app.Kind,
-				Metadata: map[string]string{
-					"name":    app.Metadata.Name,
-					"Uuid":    app.Metadata.Uuid,
-					"OnwerId": app.Metadata.OwnerId,
-				},
-				Properties: map[string]interface{}{
-					"container": app.Spec.Container,
-				},
-			}
-			for k, v := range app.Metadata.Labels {
-				if component.Metadata == nil {
-					component.Metadata = make(map[string]string)
-				}
-				component.Metadata["labels."+k] = v
-			}
-			solution.Spec.Components = append(solution.Spec.Components, component)
-		}
-
-		ret.Solutions = append(ret.Solutions, solution)
-
-		instance := model.InstanceState{
-			ObjectMeta: model.ObjectMeta{
-				Name: i.Config.HASet,
-			},
-			Spec: &model.InstanceSpec{
-				DisplayName: i.Config.HASet,
-				Solution:    i.Config.HASet + ":v1",
-				Target: model.TargetSelector{
-					LabelSelector: map[string]string{
-						"haSet": i.Config.HASet,
-						"kind":  "group",
-					},
-				},
-			},
-		}
-		ret.Instances = append(ret.Instances, instance)
 	}
 
 	return ret, nil
